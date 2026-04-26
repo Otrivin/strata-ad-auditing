@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STRATA — {{ snapshot.forest_root }}</title>
+<style>
+/* ── Tokyo Night palette ─────────────────────────────────── */
+:root {
+  --bg:           #1a1b26;
+  --bg-gradient:  radial-gradient(ellipse at top, #2f334d 0%, #1a1b26 60%);
+  --surface:      #24283b;
+  --surface-hi:   #2f334d;
+  --border:       #414868;
+  --border-soft:  rgba(65, 72, 104, 0.4);
+  --text:         #c0caf5;
+  --text-muted:   #9aa5ce;
+  --text-dim:     #565f89;
+
+  --blue:    #7aa2f7;
+  --purple:  #bb9af7;
+  --cyan:    #7dcfff;
+  --green:   #9ece6a;
+  --yellow:  #e0af68;
+  --orange:  #ff9e64;
+  --red:     #f7768e;
+  --pink:    #ff79c6;
+
+  --radius:      12px;
+  --radius-sm:   8px;
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow:      0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-lg:   0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 24px rgba(122, 162, 247, 0.18);
+
+  --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
+}
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+a { color: var(--blue); text-decoration: none; transition: color .15s; }
+a:hover { color: var(--cyan); }
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; }
+
+/* ── Layout ──────────────────────────────────────────────── */
+.container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+section.block { margin: 56px 0; }
+.section-title {
+  font-size: 1.45rem; font-weight: 700; color: var(--text);
+  margin-bottom: 6px; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 12px;
+}
+.section-subtitle {
+  font-size: 0.9rem; color: var(--text-muted); margin-bottom: 24px;
+}
+
+/* ── Hero ────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, #1f2335 0%, #24283b 50%, #2a2f48 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 36px 0 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(122, 162, 247, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(187, 154, 247, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 50% 100%, rgba(125, 207, 255, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero .container { position: relative; }
+.brand-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 32px;
+}
+.brand {
+  display: flex; align-items: baseline; gap: 12px;
+}
+.brand-mark {
+  font-size: 1.9rem; font-weight: 900;
+  letter-spacing: 0.18em;
+  /* Brand gradient — same stops as the TUI ANSI Shadow logo */
+  background: linear-gradient(90deg, #cba6f7 0%, #f5c2e7 33%, #89b4fa 66%, #89dceb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.brand-mark::before {
+  content: "✦ ";
+  -webkit-text-fill-color: #cba6f7;
+  color: #cba6f7;
+  margin-right: 4px;
+}
+.brand-version {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--surface);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-soft);
+}
+.brand-tag {
+  font-size: 0.78rem; color: var(--text-muted);
+  margin-left: 4px;
+}
+.hero-meta {
+  display: flex; gap: 24px; align-items: center;
+  font-size: 0.82rem;
+}
+.hero-meta-item { color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.hero-meta-item strong { color: var(--text); font-weight: 600; }
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, auto) 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+/* Score gauge */
+.gauge {
+  position: relative;
+  width: 280px; height: 280px;
+  margin: 0 auto;
+}
+.gauge svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.gauge-track  { fill: none; stroke: var(--surface-hi); stroke-width: 14; }
+.gauge-fill   {
+  fill: none; stroke-width: 14; stroke-linecap: round;
+  stroke-dasharray: 0 1000;
+  animation: gauge-draw 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+@keyframes gauge-draw {
+  from { stroke-dasharray: 0 1000; }
+}
+.gauge-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+}
+.gauge-grade {
+  font-size: 5rem; font-weight: 800; line-height: 1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(180deg, var(--text), var(--text-muted));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: fade-up 0.8s ease 0.4s both;
+}
+.gauge-score {
+  font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600;
+  color: var(--text); margin-top: 2px;
+  animation: fade-up 0.8s ease 0.5s both;
+}
+.gauge-band {
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; margin-top: 8px;
+  padding: 4px 12px; border-radius: 20px;
+  animation: fade-up 0.8s ease 0.6s both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Findings at a glance */
+.glance-wrap {
+  display: flex; flex-direction: column; gap: 18px;
+}
+.glance-title {
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text-muted);
+}
+.glance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative; overflow: hidden;
+  transition: transform .2s, border-color .2s;
+}
+.chip:hover { transform: translateY(-2px); border-color: var(--border); }
+.chip::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--chip-color, var(--text-muted));
+}
+.chip-count {
+  font-size: 2.1rem; font-weight: 800; line-height: 1;
+  color: var(--chip-color, var(--text));
+  font-feature-settings: "tnum";
+}
+.chip-label {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted);
+}
+.chip.crit { --chip-color: var(--red); }
+.chip.high { --chip-color: var(--orange); }
+.chip.med  { --chip-color: var(--yellow); }
+.chip.low  { --chip-color: var(--green); }
+
+.summary-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  margin-top: 4px;
+}
+.summary-stat {
+  background: rgba(36, 40, 59, 0.5);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.summary-stat .v {
+  font-size: 1.2rem; font-weight: 700; color: var(--text);
+  font-feature-settings: "tnum";
+}
+.summary-stat .l {
+  font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; margin-top: 2px;
+}
+
+/* ── Card primitives ─────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+/* ── Roadmap formula explainer ───────────────────────────── */
+.formula-card {
+  background: linear-gradient(135deg, rgba(122, 162, 247, 0.08), rgba(187, 154, 247, 0.06));
+  border: 1px solid rgba(122, 162, 247, 0.25);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 28px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: center;
+}
+.formula-icon {
+  font-size: 2rem;
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(122, 162, 247, 0.25);
+}
+.formula-text { font-size: 0.88rem; color: var(--text); }
+.formula-text strong { color: var(--cyan); font-family: var(--font-mono); }
+.formula-text .legend {
+  display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px;
+  font-size: 0.78rem; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.formula-text .legend span code {
+  color: var(--text);
+  background: rgba(65, 72, 104, 0.4);
+  padding: 1px 6px; border-radius: 4px;
+}
+
+/* ── Quick wins carousel ─────────────────────────────────── */
+.qw-header {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  margin-bottom: 16px;
+}
+.qw-header .badge {
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  color: #1a1b26; font-size: 0.68rem; font-weight: 800;
+  padding: 3px 10px; border-radius: 999px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.qw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.qw-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--qw-color, var(--text-muted));
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  position: relative;
+}
+.qw-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--qw-color, var(--blue));
+}
+.qw-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.qw-id {
+  font-family: var(--font-mono); font-size: 0.7rem;
+  color: var(--text-dim); margin-bottom: 4px;
+}
+.qw-name {
+  font-size: 0.98rem; font-weight: 600; color: var(--text);
+  line-height: 1.35;
+}
+.qw-priority {
+  background: rgba(255, 121, 198, 0.12);
+  border: 1px solid rgba(255, 121, 198, 0.3);
+  color: var(--pink);
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.qw-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.qw-desc {
+  font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;
+}
+.qw-actions { display: flex; align-items: center; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem; font-weight: 600;
+  transition: all .15s;
+}
+.btn:hover { background: var(--blue); border-color: var(--blue); color: #1a1b26; }
+.btn.primary {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  border: none; color: #1a1b26;
+}
+.btn.primary:hover { filter: brightness(1.1); }
+.qw-fix {
+  display: none; margin-top: 8px;
+}
+.qw-fix.open { display: block; animation: fade-up 0.25s ease both; }
+
+/* ── Pills & badges ──────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 6px;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.pill.sev {
+  color: #1a1b26;
+  background: var(--pill-bg, var(--text-muted));
+}
+.pill.complexity {
+  background: rgba(36, 40, 59, 0.8);
+  border: 1px solid var(--pill-bg, var(--text-muted));
+  color: var(--pill-bg, var(--text-muted));
+}
+.pill.complexity::before { content: "✦ "; opacity: 0.8; }
+
+/* ── Roadmap table ───────────────────────────────────────── */
+.roadmap-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+table.data {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.86rem;
+}
+table.data thead th {
+  text-align: left;
+  font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 14px 18px;
+  background: rgba(15, 18, 30, 0.4);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+table.data thead th.sortable { cursor: pointer; transition: color .15s; }
+table.data thead th.sortable:hover { color: var(--text); }
+table.data thead th.sortable::after {
+  content: " ⇅"; opacity: 0.4; font-size: 0.7em;
+}
+table.data thead th.sort-asc::after { content: " ↑"; opacity: 1; color: var(--blue); }
+table.data thead th.sort-desc::after { content: " ↓"; opacity: 1; color: var(--blue); }
+table.data tbody td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
+table.data tbody tr {
+  transition: background .15s, transform .15s;
+}
+table.data tbody tr:hover {
+  background: rgba(122, 162, 247, 0.05);
+}
+table.data tbody tr:last-child td { border-bottom: none; }
+.rank {
+  font-family: var(--font-mono); font-weight: 700;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+  width: 50px;
+}
+.rank.top1 { color: var(--pink); }
+.rank.top3 { color: var(--orange); }
+.priority-score {
+  font-family: var(--font-mono); font-weight: 700;
+  font-feature-settings: "tnum";
+}
+.priority-score.critical-priority { color: var(--red); }
+.priority-score.high-priority { color: var(--orange); }
+.priority-score.medium-priority { color: var(--yellow); }
+.priority-score.low-priority { color: var(--text-muted); }
+.check-id {
+  font-family: var(--font-mono); font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.row-name {
+  color: var(--text); font-weight: 500;
+  cursor: pointer;
+}
+.row-name:hover { color: var(--cyan); text-decoration: underline; }
+.domain-tag {
+  font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--text-muted);
+  background: rgba(65, 72, 104, 0.25);
+  padding: 2px 8px; border-radius: 4px;
+}
+.affected-count {
+  font-family: var(--font-mono); font-feature-settings: "tnum";
+  color: var(--text-muted); font-size: 0.82rem;
+}
+.affected-count.has-items { color: var(--orange); font-weight: 600; }
+
+/* ── Category breakdown ──────────────────────────────────── */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.cat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+.cat-tile::after {
+  content: ""; position: absolute; top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle, var(--cat-glow, transparent) 0%, transparent 70%);
+  opacity: 0.4; pointer-events: none;
+}
+.cat-tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--cat-color, var(--blue));
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+}
+.cat-tile-icon { font-size: 1.8rem; margin-bottom: 12px; }
+.cat-tile-name {
+  font-size: 0.88rem; font-weight: 600; color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.cat-tile-stat {
+  display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px;
+}
+.cat-tile-passed {
+  font-size: 1.9rem; font-weight: 800; color: var(--text);
+  font-feature-settings: "tnum"; line-height: 1;
+}
+.cat-tile-total {
+  font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);
+}
+.cat-tile-pct {
+  font-family: var(--font-mono); font-size: 0.78rem; color: var(--cat-color, var(--text-muted));
+  font-weight: 700; margin-left: auto;
+}
+.cat-progress {
+  height: 6px;
+  background: var(--surface-hi);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.cat-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cat-color, var(--text-muted)), var(--cat-color-2, var(--cat-color, var(--text-muted))));
+  border-radius: 3px;
+  width: 0;
+  animation: bar-grow 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.3s;
+}
+@keyframes bar-grow {
+  to { width: var(--bar-w, 0%); }
+}
+
+/* ── Findings explorer ───────────────────────────────────── */
+.explorer-controls {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 18px; align-items: center;
+}
+.filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.fchip {
+  padding: 7px 14px; border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.76rem; font-weight: 600;
+  transition: all .15s;
+}
+.fchip:hover { color: var(--text); border-color: var(--border); }
+.fchip.active {
+  background: var(--blue); color: #1a1b26; border-color: var(--blue);
+}
+.fchip[data-sev="CRITICAL"].active { background: var(--red); border-color: var(--red); }
+.fchip[data-sev="HIGH"].active { background: var(--orange); border-color: var(--orange); }
+.fchip[data-sev="MEDIUM"].active { background: var(--yellow); border-color: var(--yellow); }
+.fchip[data-sev="LOW"].active { background: var(--green); border-color: var(--green); color: #1a1b26;}
+.fchip[data-status="passed"].active { background: var(--green); border-color: var(--green); color: #1a1b26; }
+
+.explorer-search {
+  flex: 1; min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+.explorer-search:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15);
+}
+.explorer-cat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.findings-table tbody tr.expand {
+  cursor: pointer;
+}
+.findings-table tbody tr.detail-row { display: none; }
+.findings-table tbody tr.detail-row.open { display: table-row; }
+.findings-table tbody tr.detail-row > td {
+  background: rgba(15, 18, 30, 0.5);
+  padding: 0;
+  border-top: 1px solid var(--border-soft);
+}
+.detail-inner {
+  padding: 22px 28px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+.detail-section {
+  font-size: 0.85rem; color: var(--text-muted);
+}
+.detail-section h4 {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.detail-section p { color: var(--text); }
+.affected-list {
+  display: flex; flex-direction: column; gap: 4px;
+  font-family: var(--font-mono); font-size: 0.78rem;
+  color: var(--text-muted);
+  max-height: 220px; overflow-y: auto;
+}
+.affected-list li {
+  list-style: none; padding: 4px 10px;
+  background: rgba(65, 72, 104, 0.18);
+  border-radius: 4px;
+}
+
+.status-icon { font-weight: 700; font-size: 0.95rem; }
+.status-icon.pass { color: var(--green); }
+.status-icon.fail { color: var(--red); }
+
+/* ── PowerShell code block ───────────────────────────────── */
+.ps-wrap { position: relative; }
+.ps-block {
+  background: #16161e;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #c0caf5;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.ps-block code { color: inherit; }
+.copy-btn {
+  position: absolute; top: 10px; right: 10px;
+  padding: 5px 12px; border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem; font-weight: 600;
+  transition: all .15s;
+}
+.copy-btn:hover { background: var(--blue); color: #1a1b26; border-color: var(--blue); }
+.copy-btn.copied { background: var(--green); color: #1a1b26; border-color: var(--green); }
+
+/* ── Topology ────────────────────────────────────────────── */
+.topo-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+}
+.domain-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  transition: transform .2s, border-color .2s;
+}
+.domain-card:hover { transform: translateY(-2px); border-color: var(--blue); }
+.domain-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 14px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.domain-name {
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  font-family: var(--font-mono);
+}
+.forest-root-badge {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cyan);
+  background: rgba(125, 207, 255, 0.12);
+  border: 1px solid rgba(125, 207, 255, 0.3);
+  padding: 2px 8px; border-radius: 4px;
+}
+.domain-meta {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px;
+  font-size: 0.82rem; color: var(--text-muted);
+}
+.domain-meta dt { color: var(--text-dim); }
+.domain-meta dd { color: var(--text); font-family: var(--font-mono); font-size: 0.78rem; }
+
+.trust-list { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.trust-list-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 10px;
+}
+.trust-row {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 8px; align-items: center;
+  padding: 8px 0; font-size: 0.8rem;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.trust-row:last-child { border-bottom: none; }
+.trust-target { font-family: var(--font-mono); color: var(--text); font-size: 0.78rem; }
+.trust-arrow {
+  color: var(--text-muted); font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+.trust-flags { display: flex; gap: 6px; }
+.trust-flag {
+  font-size: 0.66rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.flag-ok { background: rgba(158, 206, 106, 0.15); color: var(--green); border: 1px solid rgba(158, 206, 106, 0.3); }
+.flag-bad { background: rgba(247, 118, 142, 0.15); color: var(--red); border: 1px solid rgba(247, 118, 142, 0.3); }
+
+/* ── Trend mini ──────────────────────────────────────────── */
+.trend-card {
+  background: linear-gradient(135deg, rgba(122, 162, 247, 0.06), rgba(187, 154, 247, 0.04));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px; margin-top: 16px;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+}
+.trend-delta {
+  font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem;
+  padding: 4px 12px; border-radius: 6px;
+}
+.delta-pos { color: var(--green); background: rgba(158, 206, 106, 0.12); }
+.delta-neg { color: var(--red); background: rgba(247, 118, 142, 0.12); }
+.delta-zero { color: var(--text-muted); background: var(--surface-hi); }
+
+/* ── Footer ──────────────────────────────────────────────── */
+footer.site-footer {
+  margin-top: 80px;
+  padding: 36px 0;
+  border-top: 1px solid var(--border);
+  background: rgba(15, 18, 30, 0.4);
+}
+footer .container {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 16px;
+  font-size: 0.78rem; color: var(--text-muted);
+}
+footer a { color: var(--text-muted); }
+footer a:hover { color: var(--blue); }
+
+/* ── Hidden state (filtering) ────────────────────────────── */
+.is-hidden { display: none !important; }
+
+/* ── Print ───────────────────────────────────────────────── */
+@media print {
+  body { background: #fff; color: #000; }
+  .copy-btn, .filter-chips, .explorer-search, .explorer-cat, .btn { display: none !important; }
+  .ps-block { max-height: none; color: #000; background: #f8f8f8; }
+  .findings-table tr.detail-row { display: table-row !important; }
+  .qw-fix { display: block !important; }
+}
+
+/* ── Responsive (1280–1920) ──────────────────────────────── */
+@media (max-width: 1440px) {
+  .container { padding: 0 24px; }
+  .cat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 1280px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+  .glance-grid { grid-template-columns: repeat(4, 1fr); }
+  .cat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+{# ── HERO ───────────────────────────────────────────────── #}
+<header class="hero">
+  <div class="container">
+    <div class="brand-row">
+      <div class="brand">
+        <span class="brand-mark">STRATA</span>
+        <span class="brand-version">v{{ tool_version }}</span>
+        <span class="brand-tag">Active Directory Auditing</span>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-meta-item">Forest <strong>{{ snapshot.forest_root }}</strong></div>
+        <div class="hero-meta-item"><strong>{{ snapshot.domains|length }}</strong> domain{{ "s" if snapshot.domains|length != 1 else "" }}</div>
+        {% set dc_count = snapshot.domains|map(attribute='dc_hostname')|select|list|length %}
+        <div class="hero-meta-item"><strong>{{ dc_count }}</strong> DC{{ "s" if dc_count != 1 else "" }}</div>
+        <div class="hero-meta-item">{{ snapshot.timestamp.strftime("%Y-%m-%d %H:%M") }}</div>
+      </div>
+    </div>
+
+    <div class="hero-grid">
+      {# ── Score gauge ── #}
+      {% set score = snapshot.score %}
+      {% set sc_color = score_color_val %}
+      {% set radius = 120 %}
+      {% set circumference = (2 * 3.14159265 * radius) | round(2) %}
+      {% set fill_len = (circumference * score / 100) | round(2) %}
+      <div class="gauge">
+        <svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg">
+          <circle class="gauge-track" cx="140" cy="140" r="{{ radius }}"></circle>
+          <circle class="gauge-fill" cx="140" cy="140" r="{{ radius }}"
+                  stroke="{{ sc_color }}"
+                  style="--fill-len: {{ fill_len }}; --circ: {{ circumference }};
+                         animation-name: gauge-anim-{{ score }};"></circle>
+        </svg>
+        <style>
+          @keyframes gauge-anim-{{ score }} {
+            from { stroke-dasharray: 0 {{ circumference }}; }
+            to   { stroke-dasharray: {{ fill_len }} {{ circumference }}; }
+          }
+          .gauge-fill { stroke-dasharray: {{ fill_len }} {{ circumference }}; }
+          .gauge-band {
+            color: {{ sc_color }};
+            background: {{ sc_color }}22;
+            border: 1px solid {{ sc_color }}55;
+          }
+        </style>
+        <div class="gauge-center">
+          <div class="gauge-grade" style="background: linear-gradient(180deg, {{ sc_color }}, {{ sc_color }}aa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{{ score | grade_letter }}</div>
+          <div class="gauge-score">{{ score }} / 100</div>
+          <div class="gauge-band">{{ snapshot.score_band }}</div>
+        </div>
+      </div>
+
+      {# ── Findings at a glance ── #}
+      {% set sev_counts = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0} %}
+      {% for r in snapshot.findings() %}
+        {% if r.severity.value in sev_counts %}{% set _ = sev_counts.update({r.severity.value: sev_counts[r.severity.value] + 1}) %}{% endif %}
+      {% endfor %}
+      <div class="glance-wrap">
+        <div class="glance-title">Findings at a glance</div>
+        <div class="glance-grid">
+          <div class="chip crit">
+            <div class="chip-count">{{ sev_counts['critical'] }}</div>
+            <div class="chip-label">Critical</div>
+          </div>
+          <div class="chip high">
+            <div class="chip-count">{{ sev_counts['high'] }}</div>
+            <div class="chip-label">High</div>
+          </div>
+          <div class="chip med">
+            <div class="chip-count">{{ sev_counts['medium'] }}</div>
+            <div class="chip-label">Medium</div>
+          </div>
+          <div class="chip low">
+            <div class="chip-count">{{ sev_counts['low'] }}</div>
+            <div class="chip-label">Low</div>
+          </div>
+        </div>
+
+        {% set total = snapshot.results|length %}
+        {% set passed = snapshot.passed_checks()|length %}
+        {% set failed = snapshot.findings()|length %}
+        {% set quick = quick_wins|length %}
+        <div class="summary-row">
+          <div class="summary-stat"><div class="v">{{ total }}</div><div class="l">Checks run</div></div>
+          <div class="summary-stat"><div class="v">{{ passed }}</div><div class="l">Passing</div></div>
+          <div class="summary-stat"><div class="v">{{ failed }}</div><div class="l">Failing</div></div>
+          <div class="summary-stat"><div class="v">{{ quick }}</div><div class="l">Quick wins</div></div>
+        </div>
+
+        {% if trend %}
+          {% set delta = trend.score_delta %}
+          {% set delta_class = "delta-pos" if delta > 0 else ("delta-neg" if delta < 0 else "delta-zero") %}
+          <div class="trend-card">
+            <div>
+              <div style="font-size:0.7rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.08em;">Since last scan</div>
+              <div style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">{{ trend.old_snapshot.timestamp.strftime("%Y-%m-%d") }} → {{ snapshot.timestamp.strftime("%Y-%m-%d") }}</div>
+            </div>
+            <div class="trend-delta {{ delta_class }}">{{ "+" if delta > 0 else "" }}{{ delta }}</div>
+            <div style="font-size:0.82rem; color:var(--text-muted);">
+              <strong style="color:var(--green);">{{ trend.mitigated|length }}</strong> mitigated
+              &middot;
+              <strong style="color:var(--red);">{{ trend.new_failures|length }}</strong> new
+              &middot;
+              <strong style="color:var(--orange);">{{ trend.still_failing|length }}</strong> persisting
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+{# ── 2. REMEDIATION ROADMAP ─────────────────────────────── #}
+<section class="block" id="roadmap">
+  <h2 class="section-title">⚡ Remediation Roadmap</h2>
+  <p class="section-subtitle">Prioritized by criticality × impact ÷ complexity. Start at the top.</p>
+
+  <div class="formula-card">
+    <div class="formula-icon">∑</div>
+    <div class="formula-text">
+      <div><strong>Priority = (Severity multiplier × Weight) ÷ Complexity</strong></div>
+      <div class="legend">
+        <span>Severity: <code>CRITICAL=10</code> <code>HIGH=5</code> <code>MEDIUM=2</code> <code>LOW=1</code></span>
+        <span>Complexity: <code>TRIVIAL=1</code> <code>EASY=2</code> <code>MODERATE=3</code> <code>HARD=4</code> <code>SURGICAL=5</code></span>
+      </div>
+    </div>
+  </div>
+
+  {# ── A) Quick Wins ── #}
+  {% if quick_wins %}
+  <div class="qw-header">
+    <span>Quick Wins</span>
+    <span class="badge">High impact · Low effort</span>
+    <span style="margin-left:auto; font-size:0.78rem; color:var(--text-muted); font-weight:500;">
+      Top {{ quick_wins|length }} fixes you can ship today
+    </span>
+  </div>
+  <div class="qw-grid">
+    {% for r in quick_wins %}
+      {% set sc = r.severity | sev_color %}
+      {% set cc = r.effective_complexity() | complexity_color %}
+      <div class="qw-card" style="--qw-color: {{ sc }};">
+        <div class="qw-top">
+          <div>
+            <div class="qw-id">{{ r.check_id }} &middot; {{ r.domain }}</div>
+            <div class="qw-name">{{ r.name }}</div>
+          </div>
+          <div class="qw-priority">P {{ "%.1f"|format(r.priority_score()) }}</div>
+        </div>
+        <div class="qw-pills">
+          <span class="pill sev" style="--pill-bg: {{ sc }};">{{ r.severity | sev_label }}</span>
+          <span class="pill complexity" style="--pill-bg: {{ cc }};">{{ r.effective_complexity() | complexity_label }}</span>
+        </div>
+        <div class="qw-desc">{{ r.description }}</div>
+        <div class="qw-actions">
+          {% if r.remediation_ps %}
+          <button class="btn primary" onclick="toggleQwFix(this)">Show fix</button>
+          {% endif %}
+          <a class="btn" href="#row-{{ r.check_id }}">Open in explorer →</a>
+        </div>
+        {% if r.remediation_ps %}
+        <div class="qw-fix">
+          <div class="ps-wrap">
+            <button class="copy-btn" onclick="copyPs(this)">Copy</button>
+            <pre class="ps-block"><code>{{ r.remediation_ps }}</code></pre>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── B) Full Roadmap Table ── #}
+  <div class="qw-header" style="margin-top:32px;">
+    <span>Full Roadmap</span>
+    <span class="badge" style="background: linear-gradient(135deg, var(--purple), var(--pink)); color:#1a1b26;">{{ roadmap|length }} actionable findings</span>
+  </div>
+
+  {% if roadmap %}
+  <div class="roadmap-table-wrap">
+    <table class="data" id="roadmap-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="sortable" data-sort="num" data-col="1">Priority</th>
+          <th class="sortable" data-sort="str" data-col="2">Severity</th>
+          <th class="sortable" data-sort="str" data-col="3">Complexity</th>
+          <th class="sortable" data-sort="str" data-col="4">Check</th>
+          <th class="sortable" data-sort="str" data-col="5">Name</th>
+          <th class="sortable" data-sort="str" data-col="6">Domain</th>
+          <th class="sortable" data-sort="num" data-col="7">Affected</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in roadmap %}
+          {% set sc = r.severity | sev_color %}
+          {% set cc = r.effective_complexity() | complexity_color %}
+          {% set ps = r.priority_score() %}
+          {% set rank = loop.index %}
+          {% set rank_class = "top1" if rank == 1 else ("top3" if rank <= 3 else "") %}
+          <tr>
+            <td class="rank {{ rank_class }}">#{{ rank }}</td>
+            <td><span class="priority-score {{ ps | priority_class }}" data-val="{{ ps }}">{{ "%.1f"|format(ps) }}</span></td>
+            <td><span class="pill sev" style="--pill-bg: {{ sc }};">{{ r.severity | sev_label }}</span></td>
+            <td><span class="pill complexity" style="--pill-bg: {{ cc }};">{{ r.effective_complexity() | complexity_label }}</span></td>
+            <td class="check-id">{{ r.check_id }}</td>
+            <td><a class="row-name" href="#row-{{ r.check_id }}">{{ r.name }}</a></td>
+            <td><span class="domain-tag">{{ r.domain }}</span></td>
+            {% set ac = r.affected_objects|length %}
+            <td><span class="affected-count {{ 'has-items' if ac > 0 else '' }}" data-val="{{ ac }}">{{ ac }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center; padding:48px;">
+    <div style="font-size:2.5rem; margin-bottom:12px;">🎉</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--green);">No actionable findings — clean run!</div>
+    <div style="color:var(--text-muted); margin-top:6px;">Every check passed or returned info-only signal.</div>
+  </div>
+  {% endif %}
+</section>
+
+{# ── 3. CATEGORY BREAKDOWN ──────────────────────────────── #}
+<section class="block" id="categories">
+  <h2 class="section-title">📊 Category Breakdown</h2>
+  <p class="section-subtitle">Pass rate per AD security domain.</p>
+
+  <div class="cat-grid">
+    {% for cat in Category %}
+      {% set p, t = snapshot.category_score(cat) %}
+      {% set pct = ((p / t * 100) | round) if t > 0 else 100 %}
+      {% set ccolor = "var(--green)" if pct >= 80 else ("var(--yellow)" if pct >= 50 else "var(--red)") %}
+      {% set cglow = "rgba(158,206,106,0.2)" if pct >= 80 else ("rgba(224,175,104,0.2)" if pct >= 50 else "rgba(247,118,142,0.2)") %}
+      <a class="cat-tile" href="#cat-{{ cat.value }}"
+         style="--cat-color: {{ ccolor }}; --cat-glow: {{ cglow }};">
+        <div class="cat-tile-icon">{{ cat | cat_icon }}</div>
+        <div class="cat-tile-name">{{ cat | cat_label }}</div>
+        <div class="cat-tile-stat">
+          <span class="cat-tile-passed">{{ p }}</span>
+          <span class="cat-tile-total">/ {{ t }}</span>
+          <span class="cat-tile-pct">{{ pct }}%</span>
+        </div>
+        <div class="cat-progress">
+          <div class="cat-progress-fill" style="--bar-w: {{ pct }}%;"></div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── 4. FINDINGS EXPLORER ───────────────────────────────── #}
+<section class="block" id="explorer">
+  <h2 class="section-title">🔍 Findings Explorer</h2>
+  <p class="section-subtitle">Filter, search, and inspect every check. Click a row to expand details and remediation.</p>
+
+  <div class="explorer-controls">
+    <div class="filter-chips" id="sev-filter">
+      <button class="fchip active" data-sev="ALL">All</button>
+      <button class="fchip" data-sev="CRITICAL">Critical</button>
+      <button class="fchip" data-sev="HIGH">High</button>
+      <button class="fchip" data-sev="MEDIUM">Medium</button>
+      <button class="fchip" data-sev="LOW">Low</button>
+      <button class="fchip" data-status="passed">Passed only</button>
+    </div>
+    <select class="explorer-cat" id="cat-filter">
+      <option value="ALL">All categories</option>
+      {% for cat in Category %}
+      <option value="{{ cat.value }}">{{ cat | cat_label }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" class="explorer-search" id="finding-search"
+           placeholder="Search by check ID or name…" autocomplete="off">
+  </div>
+
+  <div class="roadmap-table-wrap">
+    <table class="data findings-table" id="findings-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Check</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Severity</th>
+          <th>Complexity</th>
+          <th>Domain</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in snapshot.results %}
+          {% set sc = r.severity | sev_color %}
+          {% set cc = r.effective_complexity() | complexity_color %}
+          {% set ps = r.priority_score() %}
+          <tr class="expand"
+              id="row-{{ r.check_id }}"
+              data-sev="{{ r.severity | sev_label }}"
+              data-cat="{{ r.category.value }}"
+              data-status="{{ 'passed' if r.passed else 'failed' }}"
+              data-search="{{ (r.check_id ~ ' ' ~ r.name) | lower }}"
+              onclick="toggleDetail('{{ r.check_id }}')">
+            <td>
+              {% if r.passed %}
+                <span class="status-icon pass" title="Pass">✓</span>
+              {% else %}
+                <span class="status-icon fail" title="Fail">✗</span>
+              {% endif %}
+            </td>
+            <td class="check-id">{{ r.check_id }}</td>
+            <td class="row-name">{{ r.name }}</td>
+            <td>
+              <span style="font-size:0.78rem; color:var(--text-muted);">
+                {{ r.category | cat_icon }} {{ r.category | cat_label }}
+              </span>
+            </td>
+            <td><span class="pill sev" style="--pill-bg: {{ sc }};">{{ r.severity | sev_label }}</span></td>
+            <td><span class="pill complexity" style="--pill-bg: {{ cc }};">{{ r.effective_complexity() | complexity_label }}</span></td>
+            <td><span class="domain-tag">{{ r.domain }}</span></td>
+            <td><span class="priority-score {{ ps | priority_class }}">{{ "%.1f"|format(ps) }}</span></td>
+          </tr>
+          <tr class="detail-row" id="detail-{{ r.check_id }}">
+            <td colspan="8">
+              <div class="detail-inner">
+                <div class="detail-section">
+                  <h4>Description</h4>
+                  <p>{{ r.description }}</p>
+                </div>
+                {% if r.detail %}
+                <div class="detail-section">
+                  <h4>Finding</h4>
+                  <p>{{ r.detail }}</p>
+                </div>
+                {% endif %}
+                {% if r.affected_objects %}
+                <div class="detail-section">
+                  <h4>Affected objects ({{ r.affected_objects|length }})</h4>
+                  <ul class="affected-list">
+                    {% for obj in r.affected_objects[:10] %}
+                    <li>{{ obj }}</li>
+                    {% endfor %}
+                    {% if r.affected_objects|length > 10 %}
+                    <li style="color:var(--text-dim); font-style:italic;">…and {{ r.affected_objects|length - 10 }} more</li>
+                    {% endif %}
+                  </ul>
+                </div>
+                {% endif %}
+                {% if r.remediation_ps %}
+                <div class="detail-section">
+                  <h4>Remediation (PowerShell)</h4>
+                  <div class="ps-wrap">
+                    <button class="copy-btn" onclick="copyPs(this)">Copy</button>
+                    <pre class="ps-block"><code>{{ r.remediation_ps }}</code></pre>
+                  </div>
+                </div>
+                {% endif %}
+                {% if r.best_practice_ps and r.passed %}
+                <div class="detail-section">
+                  <h4>Hardening (best practice)</h4>
+                  <div class="ps-wrap">
+                    <button class="copy-btn" onclick="copyPs(this)">Copy</button>
+                    <pre class="ps-block"><code>{{ r.best_practice_ps }}</code></pre>
+                  </div>
+                </div>
+                {% endif %}
+                {% if r.reference %}
+                <div class="detail-section">
+                  <h4>Reference</h4>
+                  <p><a href="{{ r.reference }}" target="_blank" rel="noopener">{{ r.reference }}</a></p>
+                </div>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── 5. FOREST TOPOLOGY ─────────────────────────────────── #}
+<section class="block" id="topology">
+  <h2 class="section-title">🌲 Forest Topology</h2>
+  <p class="section-subtitle">Domains, controllers, and trust relationships discovered during the scan.</p>
+
+  <div class="topo-grid">
+    {% for d in snapshot.domains %}
+    <div class="domain-card">
+      <div class="domain-head">
+        <div class="domain-name">{{ d.name }}</div>
+        {% if d.is_forest_root %}
+        <span class="forest-root-badge">Forest root</span>
+        {% endif %}
+      </div>
+      <dl class="domain-meta">
+        <dt>NetBIOS</dt><dd>{{ d.netbios_name }}</dd>
+        <dt>DC</dt><dd>{{ d.dc_hostname }}</dd>
+        <dt>DN</dt><dd style="word-break:break-all;">{{ d.dn }}</dd>
+        <dt>Functional level</dt><dd>{{ d.functional_level }}</dd>
+      </dl>
+      {% if d.trusts %}
+      <div class="trust-list">
+        <div class="trust-list-title">Trusts ({{ d.trusts|length }})</div>
+        {% for t in d.trusts %}
+        <div class="trust-row">
+          <div>
+            <div class="trust-target">{{ t.target_domain }}</div>
+            <div class="trust-arrow">
+              {% if t.trust_direction == "Bidirectional" %}↔{% elif t.trust_direction == "Inbound" %}←{% elif t.trust_direction == "Outbound" %}→{% else %}⊘{% endif %}
+              {{ t.trust_direction }} · {{ t.trust_type }}
+              {% if t.is_transitive %} · transitive{% endif %}
+            </div>
+          </div>
+          <div class="trust-flags">
+            {% if t.sid_filtering %}
+            <span class="trust-flag flag-ok">SID filter</span>
+            {% else %}
+            <span class="trust-flag flag-bad">No SID filter</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+</div> {# /container #}
+
+{# ── 6. FOOTER ──────────────────────────────────────────── #}
+<footer class="site-footer">
+  <div class="container">
+    <div>
+      Generated <strong>{{ generated_at }}</strong>
+      &middot; STRATA <code style="font-family:var(--font-mono); color:var(--text);">v{{ tool_version }}</code>
+      &middot; Read-only Kerberos audit
+    </div>
+    <div>
+      Reference:
+      <a href="https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory" target="_blank" rel="noopener">MS AD DS Best Practices</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Toggle detail row in findings explorer ───────────────
+function toggleDetail(id) {
+  var det = document.getElementById('detail-' + id);
+  if (det) det.classList.toggle('open');
+}
+
+// ── Toggle quick-win remediation block ───────────────────
+function toggleQwFix(btn) {
+  var fix = btn.closest('.qw-card').querySelector('.qw-fix');
+  if (!fix) return;
+  var open = fix.classList.toggle('open');
+  btn.textContent = open ? 'Hide fix' : 'Show fix';
+}
+
+// ── Copy PowerShell to clipboard ─────────────────────────
+function copyPs(btn) {
+  var pre = btn.parentElement.querySelector('pre code') || btn.parentElement.querySelector('pre');
+  if (!pre) return;
+  var txt = pre.innerText;
+  navigator.clipboard.writeText(txt).then(function () {
+    btn.classList.add('copied');
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function () {
+      btn.classList.remove('copied');
+      btn.textContent = orig;
+    }, 1400);
+  }).catch(function () {
+    btn.textContent = 'Copy failed';
+    setTimeout(function () { btn.textContent = 'Copy'; }, 1400);
+  });
+}
+
+// ── Findings explorer: filter chips + search + category ──
+(function () {
+  var sevFilter = 'ALL';
+  var statusFilter = null;
+  var catFilter = 'ALL';
+  var searchQ = '';
+
+  var rows = document.querySelectorAll('#findings-table tbody tr.expand');
+  var detailRows = document.querySelectorAll('#findings-table tbody tr.detail-row');
+
+  function apply() {
+    rows.forEach(function (row) {
+      var sev = row.getAttribute('data-sev');
+      var cat = row.getAttribute('data-cat');
+      var status = row.getAttribute('data-status');
+      var search = row.getAttribute('data-search') || '';
+
+      var sevOk = (sevFilter === 'ALL') || (sev === sevFilter);
+      var statusOk = !statusFilter || (status === statusFilter);
+      var catOk = (catFilter === 'ALL') || (cat === catFilter);
+      var searchOk = !searchQ || search.indexOf(searchQ) !== -1;
+
+      var visible = sevOk && statusOk && catOk && searchOk;
+      row.classList.toggle('is-hidden', !visible);
+
+      var det = document.getElementById('detail-' + row.id.replace('row-', ''));
+      if (det && !visible) {
+        det.classList.add('is-hidden');
+        det.classList.remove('open');
+      } else if (det) {
+        det.classList.remove('is-hidden');
+      }
+    });
+  }
+
+  document.querySelectorAll('#sev-filter .fchip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var status = chip.getAttribute('data-status');
+      var sev = chip.getAttribute('data-sev');
+      if (status === 'passed') {
+        statusFilter = (statusFilter === 'passed') ? null : 'passed';
+        document.querySelectorAll('#sev-filter .fchip').forEach(function (c) { c.classList.remove('active'); });
+        if (statusFilter) chip.classList.add('active');
+        else document.querySelector('#sev-filter .fchip[data-sev="ALL"]').classList.add('active');
+      } else {
+        sevFilter = sev;
+        statusFilter = null;
+        document.querySelectorAll('#sev-filter .fchip').forEach(function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+      }
+      apply();
+    });
+  });
+
+  var catSel = document.getElementById('cat-filter');
+  if (catSel) catSel.addEventListener('change', function () { catFilter = this.value; apply(); });
+
+  var search = document.getElementById('finding-search');
+  if (search) search.addEventListener('input', function () {
+    searchQ = this.value.trim().toLowerCase();
+    apply();
+  });
+})();
+
+// ── Roadmap table sorting ────────────────────────────────
+(function () {
+  var tbl = document.getElementById('roadmap-table');
+  if (!tbl) return;
+  var headers = tbl.querySelectorAll('th.sortable');
+  var tbody = tbl.querySelector('tbody');
+  var current = { col: null, dir: 1 };
+
+  headers.forEach(function (th) {
+    th.addEventListener('click', function () {
+      var col = parseInt(th.getAttribute('data-col'), 10);
+      var type = th.getAttribute('data-sort');
+      var dir = (current.col === col) ? -current.dir : 1;
+      current = { col: col, dir: dir };
+
+      headers.forEach(function (h) { h.classList.remove('sort-asc', 'sort-desc'); });
+      th.classList.add(dir === 1 ? 'sort-asc' : 'sort-desc');
+
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function (a, b) {
+        var av = a.cells[col].innerText.trim();
+        var bv = b.cells[col].innerText.trim();
+        var aData = a.cells[col].querySelector('[data-val]');
+        var bData = b.cells[col].querySelector('[data-val]');
+        if (aData) av = aData.getAttribute('data-val');
+        if (bData) bv = bData.getAttribute('data-val');
+        if (type === 'num') {
+          return (parseFloat(av) - parseFloat(bv)) * dir;
+        }
+        return av.localeCompare(bv) * dir;
+      });
+      rows.forEach(function (r) { tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

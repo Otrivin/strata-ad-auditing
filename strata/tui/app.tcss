@@ -1,0 +1,755 @@
+/* ============================================================================
+ * STRATA — Catppuccin Mocha theme
+ * ============================================================================ */
+
+$base:     #1e1e2e;
+$mantle:   #181825;
+$crust:    #11111b;
+$surface0: #313244;
+$surface1: #45475a;
+$surface2: #585b70;
+$overlay:  #6c7086;
+$text:     #cdd6f4;
+$subtext1: #bac2de;
+$subtext0: #a6adc8;
+$rosewater: #f5e0dc;
+$pink:     #f5c2e7;
+$mauve:    #cba6f7;
+$red:      #f38ba8;
+$maroon:   #eba0ac;
+$peach:    #fab387;
+$yellow:   #f9e2af;
+$green:    #a6e3a1;
+$teal:     #94e2d5;
+$sky:      #89dceb;
+$sapphire: #74c7ec;
+$blue:     #89b4fa;
+$lavender: #b4befe;
+
+/* ----------------------- Global ------------------------------------------- */
+
+Screen {
+    background: $base;
+    color: $text;
+    layers: base overlay;
+}
+
+/* ----------------------- App chrome --------------------------------------- */
+
+#app-header {
+    dock: top;
+    height: 3;
+    background: $crust;
+    color: $text;
+    padding: 0 2;
+    border-bottom: solid $surface0;
+}
+
+#brand {
+    width: 1fr;
+    height: 3;
+    content-align: left middle;
+}
+
+#header-meta {
+    width: auto;
+    height: 3;
+    content-align: right middle;
+    color: $subtext1;
+}
+
+#app-footer {
+    dock: bottom;
+    height: 1;
+    background: $crust;
+    color: $subtext1;
+    padding: 0 2;
+    content-align: left middle;
+}
+
+/* ----------------------- Cards / panels ----------------------------------- */
+
+.card {
+    border: round $surface1;
+    background: $mantle;
+    padding: 1 2;
+}
+
+.card:focus-within {
+    border: round $mauve;
+}
+
+.card-title {
+    color: $mauve;
+    text-style: bold;
+    padding: 0 0 1 0;
+}
+
+.muted {
+    color: $subtext0;
+}
+
+.dim {
+    color: $overlay;
+}
+
+/* ----------------------- LoadingScreen ------------------------------------ */
+
+LoadingScreen {
+    align: center middle;
+    background: $base;
+}
+
+#loading-card {
+    width: 80;
+    height: auto;
+    border: round $mauve;
+    background: $mantle;
+    padding: 2 4;
+}
+
+#loading-brand {
+    content-align: center middle;
+    height: 8;
+    padding-bottom: 1;
+}
+
+#loading-stage {
+    text-align: center;
+    color: $text;
+    height: 2;
+    padding: 1 0;
+}
+
+#loading-domain {
+    text-align: center;
+    color: $subtext0;
+    height: 1;
+    padding-bottom: 1;
+}
+
+#loading-bar {
+    height: 1;
+    margin: 1 0;
+}
+
+#loading-bar > Bar {
+    color: $mauve;
+}
+
+#loading-spinner {
+    text-align: center;
+    color: $mauve;
+    height: 1;
+}
+
+#loading-log {
+    height: 8;
+    border: round $surface0;
+    background: $crust;
+    color: $subtext0;
+    padding: 0 1;
+    margin-top: 1;
+}
+
+/* ----------------------- ConnectScreen ------------------------------------ */
+
+ConnectScreen {
+    align: center middle;
+}
+
+#connect-card {
+    width: 80;
+    height: auto;
+    border: round $mauve;
+    background: $mantle;
+    padding: 2 4;
+}
+
+#connect-title {
+    content-align: center middle;
+    height: 9;
+    padding-bottom: 2;
+}
+
+ConnectScreen .field-label {
+    margin-top: 1;
+    color: $subtext1;
+    text-style: bold;
+}
+
+ConnectScreen Input {
+    border: round $surface1;
+    background: $base;
+    color: $text;
+    padding: 0 1;
+}
+
+ConnectScreen Input:focus {
+    border: round $mauve;
+}
+
+ConnectScreen Checkbox {
+    background: $mantle;
+    color: $text;
+    margin-top: 1;
+}
+
+ConnectScreen Checkbox:focus {
+    color: $mauve;
+}
+
+#connect-actions {
+    margin-top: 2;
+    height: 3;
+    align: center middle;
+}
+
+#connect-actions Button {
+    background: $mauve;
+    color: $crust;
+    text-style: bold;
+    border: none;
+    margin: 0 1;
+}
+
+#connect-actions Button:hover {
+    background: $lavender;
+}
+
+#connect-error {
+    color: $red;
+    text-align: center;
+    margin-top: 1;
+}
+
+/* ----------------------- ErrorScreen -------------------------------------- */
+
+ErrorScreen {
+    align: center middle;
+}
+
+#error-card {
+    width: 80;
+    height: auto;
+    border: round $red;
+    background: $mantle;
+    padding: 2 3;
+}
+
+#error-title {
+    text-align: center;
+    text-style: bold;
+    color: $red;
+    padding-bottom: 1;
+}
+
+#error-body {
+    color: $text;
+    padding: 1 0;
+}
+
+#error-actions {
+    height: 3;
+    margin-top: 1;
+    align: center middle;
+}
+
+#error-actions Button {
+    background: $surface1;
+    color: $text;
+    border: none;
+    margin: 0 1;
+}
+
+#error-actions Button:hover {
+    background: $mauve;
+    color: $crust;
+}
+
+/* ----------------------- DashboardScreen ---------------------------------- */
+
+#dash-grid {
+    layout: horizontal;
+    padding: 1 2;
+    height: 1fr;
+}
+
+#dash-left {
+    width: 40%;
+    height: 1fr;
+    padding-right: 1;
+}
+
+#dash-right {
+    width: 60%;
+    height: 1fr;
+    padding-left: 1;
+    layout: vertical;
+}
+
+#score-card {
+    height: 1fr;
+    border: round $surface1;
+    background: $mantle;
+    padding: 1 2;
+}
+
+#score-grade {
+    text-align: center;
+    height: 8;
+    color: $mauve;
+    text-style: bold;
+}
+
+#score-number {
+    text-align: center;
+    height: 2;
+    color: $text;
+}
+
+#score-band {
+    text-align: center;
+    height: 2;
+    text-style: bold;
+}
+
+#score-meta {
+    text-align: center;
+    height: 2;
+    color: $subtext0;
+    padding-top: 1;
+}
+
+#score-divider {
+    height: 1;
+    color: $surface1;
+}
+
+#severity-strip {
+    height: auto;
+    padding: 1 0;
+    align: center middle;
+}
+
+#quick-wins-card {
+    height: 50%;
+    border: round $surface1;
+    background: $mantle;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+#quick-wins-list {
+    height: 1fr;
+    background: $mantle;
+}
+
+.qw-row {
+    height: 1;
+    color: $text;
+    padding: 0 1;
+}
+
+.qw-row:hover {
+    background: $surface0;
+}
+
+#category-grid-card {
+    height: 1fr;
+    border: round $surface1;
+    background: $mantle;
+    padding: 1 2;
+}
+
+#category-grid {
+    layout: grid;
+    grid-size: 4 2;
+    grid-gutter: 1;
+    height: 1fr;
+}
+
+.cat-tile {
+    border: round $surface0;
+    background: $base;
+    padding: 0 1;
+    height: 100%;
+    content-align: center middle;
+}
+
+.cat-tile:hover {
+    border: round $mauve;
+    background: $surface0;
+}
+
+.cat-tile-icon {
+    text-align: center;
+    color: $mauve;
+}
+
+.cat-tile-label {
+    text-align: center;
+    color: $subtext1;
+    text-style: bold;
+}
+
+.cat-tile-count {
+    text-align: center;
+    color: $text;
+    text-style: bold;
+}
+
+/* ----------------------- RoadmapScreen ------------------------------------ */
+
+#roadmap-header {
+    height: 4;
+    padding: 1 2;
+    background: $mantle;
+    border-bottom: solid $surface0;
+}
+
+#roadmap-title {
+    color: $mauve;
+    text-style: bold;
+}
+
+#roadmap-subtitle {
+    color: $subtext0;
+}
+
+#roadmap-table-card {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#roadmap-table {
+    height: 1fr;
+    background: $mantle;
+    border: round $surface1;
+}
+
+DataTable > .datatable--header {
+    background: $surface0;
+    color: $mauve;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: $surface1;
+    color: $text;
+}
+
+DataTable > .datatable--hover {
+    background: $surface0;
+}
+
+/* ----------------------- ChecksScreen ------------------------------------- */
+
+#checks-root {
+    layout: horizontal;
+    padding: 1 2;
+    height: 1fr;
+}
+
+#checks-left {
+    width: 40%;
+    layout: vertical;
+    padding-right: 1;
+}
+
+#checks-right {
+    width: 60%;
+    layout: vertical;
+    padding-left: 1;
+}
+
+#checks-filter-card {
+    height: auto;
+    border: round $surface1;
+    background: $mantle;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+#checks-filter {
+    border: none;
+    background: $mantle;
+    color: $text;
+    padding: 0 1;
+}
+
+#checks-filter:focus {
+    color: $mauve;
+}
+
+#checks-filter-chips {
+    height: 1;
+    padding: 0 1;
+    color: $subtext0;
+}
+
+#checks-list-card {
+    height: 1fr;
+    border: round $surface1;
+    background: $mantle;
+    padding: 0;
+}
+
+#checks-table {
+    height: 1fr;
+    background: $mantle;
+}
+
+#checks-detail-card {
+    height: 1fr;
+    border: round $surface1;
+    background: $mantle;
+    padding: 1 2;
+}
+
+#checks-detail-scroll {
+    height: 1fr;
+}
+
+#detail-header {
+    height: auto;
+    padding-bottom: 1;
+    color: $mauve;
+    text-style: bold;
+}
+
+#detail-body {
+    color: $text;
+    padding: 0 0 1 0;
+}
+
+#detail-section-title, .detail-section-title {
+    color: $mauve;
+    text-style: bold;
+    padding: 1 0 0 0;
+}
+
+#detail-objects, .detail-objects {
+    color: $subtext1;
+    padding-bottom: 1;
+}
+
+.detail-ps-pane {
+    background: $crust;
+    border: round $surface0;
+    padding: 1 2;
+    color: $text;
+}
+
+/* ----------------------- CheckDetailScreen (modal) ------------------------ */
+
+CheckDetailScreen {
+    align: center middle;
+    background: $base 60%;
+}
+
+#detail-modal {
+    width: 90%;
+    height: 85%;
+    border: round $mauve;
+    background: $mantle;
+    padding: 1 2;
+}
+
+#detail-modal-scroll {
+    height: 1fr;
+}
+
+#detail-modal-footer {
+    dock: bottom;
+    height: 1;
+    color: $subtext0;
+    text-align: center;
+}
+
+/* ----------------------- TopologyScreen ----------------------------------- */
+
+#topology-root {
+    padding: 1 2;
+    height: 1fr;
+}
+
+#topology-card {
+    height: 1fr;
+    border: round $surface1;
+    background: $mantle;
+    padding: 1 2;
+}
+
+#topology-tree {
+    background: $mantle;
+    color: $text;
+    height: 1fr;
+}
+
+#topology-tree > .tree--cursor {
+    background: $surface1;
+    color: $mauve;
+    text-style: bold;
+}
+
+#topology-tree > .tree--guides {
+    color: $surface1;
+}
+
+/* ----------------------- CompareScreen ------------------------------------ */
+
+#compare-picker {
+    height: 14;
+    padding: 1 2;
+}
+
+#picker-left, #picker-right {
+    width: 1fr;
+    padding: 0 1;
+    border: round $surface1;
+    background: $mantle;
+    margin: 0 1;
+}
+
+.picker-label {
+    color: $mauve;
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+#list-a, #list-b {
+    height: 1fr;
+    background: $mantle;
+}
+
+#picker-actions {
+    height: 3;
+    padding: 0 2;
+    align: left middle;
+}
+
+#picker-actions Button {
+    background: $mauve;
+    color: $crust;
+    border: none;
+    text-style: bold;
+}
+
+#picker-actions Button:hover {
+    background: $lavender;
+}
+
+#picker-hint {
+    margin-left: 2;
+    color: $subtext0;
+}
+
+#compare-results {
+    height: 1fr;
+    padding: 0 2;
+}
+
+#summary-bar {
+    background: $mantle;
+    border: round $surface1;
+    padding: 1 2;
+    height: 3;
+    color: $text;
+    margin-bottom: 1;
+}
+
+#diff-tables {
+    height: 2fr;
+}
+
+#col-mitigated, #col-new-failures {
+    width: 1fr;
+    padding: 0 1;
+    border: round $surface1;
+    background: $mantle;
+    margin: 0 1;
+}
+
+#col-still-failing {
+    height: 1fr;
+    padding: 0 1;
+    border: round $surface1;
+    background: $mantle;
+    margin: 1;
+}
+
+.col-title {
+    text-style: bold;
+    padding: 0 0 1 1;
+}
+
+#tbl-mitigated, #tbl-new-failures, #tbl-still-failing {
+    height: 1fr;
+    background: $mantle;
+}
+
+ListView {
+    background: $mantle;
+}
+
+ListView > ListItem {
+    background: $mantle;
+    color: $text;
+    padding: 0 1;
+}
+
+ListView > ListItem.--highlight {
+    background: $surface1;
+    color: $mauve;
+}
+
+ListView > ListItem:hover {
+    background: $surface0;
+}
+
+/* ----------------------- ExportScreen (modal) ----------------------------- */
+
+ExportScreen {
+    align: center middle;
+    background: $base 60%;
+}
+
+#export-card {
+    width: 90;
+    height: auto;
+    max-height: 80%;
+    border: round $mauve;
+    background: $mantle;
+    padding: 1 2;
+}
+
+#export-title {
+    color: $mauve;
+    text-style: bold;
+    padding: 0 0 0 0;
+}
+
+#export-subtitle {
+    color: $subtext0;
+    padding: 0 0 1 0;
+}
+
+.export-row {
+    padding: 0 0 0 1;
+    height: auto;
+}
+
+.export-status {
+    padding: 1 0 0 0;
+    height: 1;
+    color: $subtext1;
+}
+
+#export-hints {
+    dock: bottom;
+    height: 1;
+    color: $subtext0;
+    text-align: center;
+    padding: 1 0 0 0;
+}

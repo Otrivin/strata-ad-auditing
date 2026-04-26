@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Scan outputs — contain real domain data (DC hostnames, SIDs, account names, etc.)
+results/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local secrets / env
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
