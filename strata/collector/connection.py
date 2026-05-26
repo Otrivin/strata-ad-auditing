@@ -6,7 +6,7 @@ import logging
 from contextlib import contextmanager
 from typing import Generator
 
-from ldap3 import ALL, KERBEROS, SASL, SUBTREE, Connection, Server, Tls
+from ldap3 import ALL, BASE, KERBEROS, SASL, SUBTREE, Connection, Server, Tls
 from ldap3.core.exceptions import LDAPException
 
 log = logging.getLogger(__name__)
@@ -92,8 +92,14 @@ def paged_search(
     attributes: list[str],
     controls: list | None = None,
     page_size: int = 500,
+    scope=SUBTREE,
 ) -> list[dict]:
-    """Execute a paged LDAP search and return all entries as attribute dicts."""
+    """Execute a paged LDAP search and return all entries as attribute dicts.
+
+    Pass scope=BASE (imported from ldap3) to read a single object's attributes
+    instead of walking its subtree — required when reading an ACL on one specific
+    container without recursing.
+    """
     results: list[dict] = []
     cookie: bytes | None = None
     pages = 0
@@ -110,7 +116,7 @@ def paged_search(
         conn.search(
             search_base=search_base,
             search_filter=search_filter,
-            search_scope=SUBTREE,
+            search_scope=scope,
             attributes=attributes,
             controls=active_controls,
         )

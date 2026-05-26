@@ -26,6 +26,24 @@ AES128_FLAG = 0x08
 AES256_FLAG = 0x10
 AES_FLAGS = AES128_FLAG | AES256_FLAG
 
+# msDS-SupportedEncryptionTypes bit → human label, ordered weakest first so the
+# report reads "DES-CRC, DES-MD5, RC4-HMAC" rather than reverse.
+SUPPORTED_ENC_TYPE_LABELS: tuple[tuple[int, str], ...] = (
+    (0x01, "DES-CRC"),
+    (0x02, "DES-MD5"),
+    (0x04, "RC4-HMAC"),
+    (0x08, "AES128"),
+    (0x10, "AES256"),
+)
+
+
+def _describe_enc_types(enc: int) -> str:
+    if enc == 0:
+        # Unset → DC falls back to RC4-HMAC for the account.
+        return "default (RC4-HMAC)"
+    labels = [label for bit, label in SUPPORTED_ENC_TYPE_LABELS if enc & bit]
+    return ", ".join(labels) if labels else f"unknown (0x{enc:x})"
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,6 +61,10 @@ def _as_list(val) -> list:
 
 
 def _filetime_to_dt(val) -> datetime | None:
+    # ldap3 default formatters parse FILETIME attributes (lastLogonTimestamp, pwdLastSet,
+    # accountExpires) into datetime objects. Accept both that and the raw int form.
+    if isinstance(val, datetime):
+        return val if val.tzinfo else val.replace(tzinfo=timezone.utc)
     try:
         ft = int(val)
         if ft in (0, 9223372036854775807):
@@ -267,7 +289,8 @@ def _check_acct004(conn: Connection, domain: DomainInfo) -> CheckResult:
         except (TypeError, ValueError):
             enc = 0
         if not (enc & AES_FLAGS):
-            vulnerable.append(str(_first(e.get("sAMAccountName")) or e["dn"]))
+            sam = str(_first(e.get("sAMAccountName")) or e["dn"])
+            vulnerable.append(f"{sam} (supports: {_describe_enc_types(enc)})")
 
     if not vulnerable:
         return _ok(check_id, name, domain.name, desc, sev, weight,

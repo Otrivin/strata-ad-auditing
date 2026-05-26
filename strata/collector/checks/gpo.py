@@ -23,7 +23,9 @@ WRITE_DACL = 0x00040000
 WRITE_OWNER = 0x00080000
 WRITE_PROPERTY = 0x00000020  # ADS_RIGHT_DS_WRITE_PROP
 
-DANGEROUS_MASKS = GENERIC_ALL | GENERIC_WRITE | WRITE_DACL | WRITE_OWNER | WRITE_PROPERTY
+# Object takeover masks: any of these on a GPC grants full control of the GPO
+# regardless of object-typed scoping.
+COARSE_DANGEROUS_MASKS = GENERIC_ALL | GENERIC_WRITE | WRITE_DACL | WRITE_OWNER
 
 ACCESS_ALLOWED = 0x00
 ACCESS_ALLOWED_OBJECT = 0x05
@@ -33,7 +35,10 @@ ALLOWED_SIDS = frozenset({
     "S-1-5-9",       # Enterprise DCs
     "S-1-5-32-544",  # BUILTIN\Administrators
 })
-ALLOWED_SID_SUFFIXES = ("-516", "-498", "-512", "-519")  # DAs, EAs included
+# -512 Domain Admins, -519 Enterprise Admins, -516 Domain Controllers,
+# -498 Enterprise RO DCs, -520 Group Policy Creator Owners (legitimately writes
+# the GPOs it creates).
+ALLOWED_SID_SUFFIXES = ("-516", "-498", "-512", "-519", "-520")
 
 
 def _first(val):
@@ -125,12 +130,14 @@ def _get_gpo_guids(conn: Connection, domain_dn: str) -> list[str]:
 
 
 def _check_gpo001(conn: Connection, domain: DomainInfo) -> CheckResult:
-    """GPO-001: GPO with write access by non-admin principals."""
+    """GPO-001: GPO with write access by non-admin principals (LDAP container only)."""
     name = "GPO write access by non-admin principals"
     check_id = "GPO-001"
     desc = (
         "Group Policy Objects with write/modify ACEs granted to non-administrative principals "
-        "allow GPO tampering and potential privilege escalation"
+        "allow GPO tampering and potential privilege escalation. This check inspects the LDAP "
+        "groupPolicyContainer DACL only — the SYSVOL file path DACL (gPCFileSysPath) is not "
+        "evaluated and can independently grant write access to Registry.pol."
     )
     sev = Severity.HIGH
     weight = 7
@@ -181,9 +188,19 @@ def _check_gpo001(conn: Connection, domain: DomainInfo) -> CheckResult:
                     if not sid or _is_allowed_sid(sid):
                         continue
                     mask = _ace_mask(ace)
-                    if mask & DANGEROUS_MASKS:
+                    # Coarse takeover rights are always dangerous.
+                    if mask & COARSE_DANGEROUS_MASKS:
                         vulnerable_gpos.append(f"'{gpo_display}' — {sid} (mask={mask:#010x})")
-                        break  # one hit per GPO is enough
+                        break
+                    # WriteProperty is only "write any property" on a non-object-typed
+                    # ACE. On an object-typed ACE (0x05) it is scoped to a single
+                    # attribute by ObjectType GUID and is usually a legitimate
+                    # delegation, not a GPO takeover primitive.
+                    if ace_type == ACCESS_ALLOWED and (mask & WRITE_PROPERTY):
+                        vulnerable_gpos.append(
+                            f"'{gpo_display}' — {sid} (write-any-property, mask={mask:#010x})"
+                        )
+                        break
         except Exception as exc:
             log.debug("GPO-001: DACL iteration error for %s: %s", gpo_display, exc)
 
@@ -362,12 +379,10 @@ Get-GPO -All | ForEach-Object {
 
 
 def _check_gpo006(conn: Connection, domain: DomainInfo) -> CheckResult:
-    """GPO-006: GPO linking delegation at domain/DC-OU/site level to non-admins."""
-    base = domain.dn
-    ref = "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/how-to/delegate-administration-of-group-policy-objects"
-    # Check who has the right to link GPOs on the domain object and DC OU
-    # This requires checking ACLs on the domain root and OU=Domain Controllers
+    """GPO-006: GPO linking delegation at domain root / DC OU to non-admins."""
+    from ldap3 import BASE
     from ..connection import SECURITY_DESCRIPTOR_CONTROL
+    ref = "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/how-to/delegate-administration-of-group-policy-objects"
     if not _SD_PARSER_OK:
         return CheckResult(
             check_id="GPO-006", name="GPO link delegation to non-admins",
@@ -378,48 +393,101 @@ def _check_gpo006(conn: Connection, domain: DomainInfo) -> CheckResult:
             reference=ref,
         )
 
+    # gpLink + gpOptions attribute schemaIDGUIDs — the canonical "link GPOs to this
+    # OU" delegation grants WriteProperty (0x20) scoped to one of these via an
+    # object-typed ACE (AceType=0x05). Lower-case for stable comparison.
+    GPLINK_GUID = "f30e3bbe-9ff0-11d1-b603-0000f80367c1"
+    GPOPTIONS_GUID = "f30e3bbf-9ff0-11d1-b603-0000f80367c1"
+    LINK_ATTR_GUIDS = {GPLINK_GUID, GPOPTIONS_GUID}
+
     ADMIN_SIDS = {"S-1-5-18", "S-1-5-9", "S-1-5-32-544"}
     def _is_admin(sid: str) -> bool:
         return sid in ADMIN_SIDS or sid.endswith("-512") or sid.endswith("-519") or sid.endswith("-516")
 
-    # gpLink write right = 0x20 (WriteProperty) on attribute gpLink
-    # Check nTSecurityDescriptor on domain root and DC OU
+    def _ace_object_type_guid(ace) -> str | None:
+        # winacl exposes ObjectType only on object-typed ACEs; tolerate both
+        # attribute names and missing/None values.
+        for attr in ("ObjectType", "object_type"):
+            guid = getattr(ace, attr, None)
+            if guid is not None:
+                return str(guid).strip("{}").lower()
+        return None
+
+    WRITE_PROPERTY = 0x00000020
+    WRITE_DACL = 0x00040000
+    WRITE_OWNER = 0x00080000
+    GENERIC_ALL = 0x10000000
+    GENERIC_WRITE = 0x00400000
+    COARSE_WRITE = WRITE_DACL | WRITE_OWNER | GENERIC_ALL | GENERIC_WRITE
+
     targets = [
         (domain.dn, "domain root"),
         (f"OU=Domain Controllers,{domain.dn}", "Domain Controllers OU"),
     ]
-    affected = []
+    affected: list[str] = []
     for target_dn, label in targets:
-        rows = paged_search(conn, target_dn,
-            "(objectClass=*)",
-            ["nTSecurityDescriptor"],
-            controls=SECURITY_DESCRIPTOR_CONTROL)
+        try:
+            rows = paged_search(
+                conn, target_dn, "(objectClass=*)",
+                ["nTSecurityDescriptor"],
+                controls=SECURITY_DESCRIPTOR_CONTROL,
+                scope=BASE,
+            )
+        except Exception as exc:
+            log.debug("GPO-006: could not read %s: %s", target_dn, exc)
+            continue
+
         for row in rows:
             raw_sd = row.get("nTSecurityDescriptor")
+            if isinstance(raw_sd, list):
+                raw_sd = raw_sd[0] if raw_sd else None
             if not raw_sd:
                 continue
             try:
-                sd = SECURITY_DESCRIPTOR.from_bytes(raw_sd if isinstance(raw_sd, bytes) else bytes(raw_sd))
+                sd = SECURITY_DESCRIPTOR.from_bytes(
+                    raw_sd if isinstance(raw_sd, bytes) else bytes(raw_sd)
+                )
                 dacl = sd.Dacl
                 if dacl is None or dacl.aces is None:
                     continue
-                for ace_entry in dacl.aces:
-                    if ace_entry.AceType.value not in (0x00, 0x05):
+                for ace in dacl.aces:
+                    ace_type = ace.AceType.value
+                    if ace_type not in (0x00, 0x05):
                         continue
-                    mask = int(ace_entry.Mask)
-                    sid = str(ace_entry.Sid) if ace_entry.Sid is not None else ""
-                    if not _is_admin(sid) and (mask & 0x00040000 or mask & 0x10000000):  # WriteDACL or GenericAll
-                        affected.append(f"{sid} has write rights on {label}")
-            except Exception:
-                pass
+                    sid = str(ace.Sid) if ace.Sid is not None else ""
+                    if not sid or _is_admin(sid):
+                        continue
+                    mask = int(ace.Mask)
 
-    passed = len(affected) == 0
+                    # Coarse rights anywhere on the object → can rewrite the DACL
+                    # or take ownership, both of which yield gpLink write.
+                    if mask & COARSE_WRITE:
+                        affected.append(f"{sid} → {label} (mask={mask:#010x})")
+                        continue
+
+                    # Object-typed ACE granting WriteProperty on gpLink/gpOptions
+                    # is the canonical delegation we previously missed.
+                    if ace_type == 0x05 and (mask & WRITE_PROPERTY):
+                        guid = _ace_object_type_guid(ace)
+                        if guid in LINK_ATTR_GUIDS:
+                            attr = "gpLink" if guid == GPLINK_GUID else "gpOptions"
+                            affected.append(f"{sid} → {label} (WriteProperty on {attr})")
+            except Exception as exc:
+                log.debug("GPO-006: SD parse error for %s: %s", target_dn, exc)
+
+    passed = not affected
     return CheckResult(
         check_id="GPO-006", name="GPO link delegation to non-admins",
         category=Category.GPO, severity=Severity.HIGH, weight=7,
         passed=passed, domain=domain.name,
-        description="Non-admin principals with write rights on the domain root or DC OU can link GPOs that affect all computers, including Domain Controllers.",
-        detail="" if passed else "; ".join(affected[:5]),
+        description=(
+            "Non-admin principals with the ability to write gpLink (directly or via "
+            "WriteDACL/Owner/GenericAll) on the domain root or Domain Controllers OU "
+            "can link malicious GPOs that apply to every domain member, including DCs."
+        ),
+        detail="" if passed else "; ".join(affected[:5]) + (
+            f" (+{len(affected) - 5} more)" if len(affected) > 5 else ""
+        ),
         affected_objects=affected,
         remediation_ps="# Review and remove non-admin write access on domain root and DC OU\n# Use dsacls or Active Directory Users and Computers > Security tab",
         best_practice_ps="# Only Domain Admins and Group Policy Creator Owners should link GPOs to domain root/DC OU.",

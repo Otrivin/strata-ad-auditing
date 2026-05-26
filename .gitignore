@@ -30,3 +30,6 @@ results/
 .DS_Store
 Thumbs.db
 
+# Misc
+ROADMAP.md
+LOG.md
