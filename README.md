@@ -26,6 +26,28 @@ Each finding carries a **priority score** computed as
 `(severity_multiplier × weight) ÷ complexity`, so the Remediation Roadmap
 surfaces high-impact, low-effort fixes ("quick wins") first.
 
+## Screenshots
+
+**Dashboard** — forest score, per-category breakdown, and quick-jump tiles.
+
+![Dashboard](assets/strata-dashboard.png)
+
+**Checks** — full filterable list of every check, with severity, status, and category.
+
+![Checks](assets/strata-checks.png)
+
+**Check detail** — single finding with affected objects, remediation PowerShell, and references.
+
+![Check detail](assets/strata-task.png)
+
+**Remediation Roadmap** — every failing check sorted by priority score so quick wins surface first.
+
+![Remediation Roadmap](assets/strata-roadmap.png)
+
+**Topology** — forest / domain / DC layout discovered during the scan.
+
+![Topology](assets/strata-topology.png)
+
 ## Quick Start
 
 ### 1. Install system packages
