@@ -926,7 +926,7 @@ class HardeningApp(App):
     def _run_scan(self) -> None:
         from ..collector.checks import (
             accounts, acls, certificates, delegation, gpo,
-            infrastructure, passwords, trusts,
+            infrastructure, passwords, trusts, ou_acls,
         )
         from ..collector.connection import LDAPConnectionError, ldap_connect
         from ..collector.forest import discover_domains
@@ -940,7 +940,7 @@ class HardeningApp(App):
 
         check_modules = [
             accounts, delegation, passwords, trusts,
-            acls, gpo, infrastructure, certificates,
+            acls, ou_acls, gpo, infrastructure, certificates,
         ]
 
         def _progress(stage: str, domain: str = "", done: bool = False) -> None:

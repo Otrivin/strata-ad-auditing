@@ -166,6 +166,14 @@ def generate_html_report(
         category_icons=_CATEGORY_ICONS,
         grade_letter=_grade_letter,
         priority_class=_priority_class,
-        tool_version="0.1.0",
+        tool_version="0.1.1",
     )
+    output_path.write_text(rendered, encoding="utf-8")
+
+
+def generate_help_page(output_path: Path) -> None:
+    """Generate the scoring & roadmap help page."""
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
+    template = env.get_template("help.html.j2")
+    rendered = template.render()
     output_path.write_text(rendered, encoding="utf-8")

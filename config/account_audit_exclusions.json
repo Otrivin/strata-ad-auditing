@@ -1,0 +1,53 @@
+{
+  "account_audit_exclusions": {
+    "stale_accounts": {
+      "inactive_days": 90,
+      "exclude_patterns": [
+        "test_",
+        "temp_",
+        "demo_"
+      ],
+      "exclude_accounts": [
+        "guest",
+        "support_temp"
+      ]
+    },
+    "sensitive_description": {
+      "exclude_accounts": [
+        "archive_user"
+      ]
+    },
+    "never_logged_in": {
+      "grace_days": 30,
+      "exclude_patterns": [
+        "newstarter_",
+        "onboard_"
+      ]
+    },
+    "disabled_but_active": {
+      "check_group_membership": true,
+      "high_risk_groups": [
+        "Domain Admins",
+        "Enterprise Admins",
+        "Schema Admins",
+        "Account Operators"
+      ]
+    },
+    "stale_computers": {
+      "inactive_days": 90,
+      "exclude_patterns": [
+        "test-",
+        "lab-",
+        "dev-"
+      ]
+    },
+    "never_logged_in_computers": {
+      "grace_days": 90,
+      "exclude_patterns": [
+        "test-",
+        "lab-",
+        "image-"
+      ]
+    }
+  }
+}

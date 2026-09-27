@@ -34,6 +34,7 @@ ALLOWED_SIDS = frozenset({
     "S-1-5-18",      # SYSTEM
     "S-1-5-9",       # Enterprise DCs
     "S-1-5-32-544",  # BUILTIN\Administrators
+    "S-1-3-0",       # CREATOR OWNER — placeholder replaced on inheritance; grants nothing itself
 })
 # -512 Domain Admins, -519 Enterprise Admins, -516 Domain Controllers,
 # -498 Enterprise RO DCs, -520 Group Policy Creator Owners (legitimately writes
@@ -238,16 +239,14 @@ def _check_gpo002(conn: Connection, domain: DomainInfo) -> CheckResult:
     )
     ref = "https://learn.microsoft.com/en-us/windows-server/storage/dfs-replication/migrate-sysvol-to-dfsr"
 
-    forest_dn = ",".join(f"DC={p}" for p in domain.forest.split("."))
-    config_nc = f"CN=Configuration,{forest_dn}"
-
-    # Check for DFSR objects — if present, DFSR is in use
-    dfsr_base = f"CN=DFSR-LocalSettings,CN=Domain System Volume,CN=SYSVOL Subscription,{config_nc}"
+    # Both subscription types live under each DC's computer object in the
+    # domain NC (CN=DFSR-LocalSettings,CN=<DC>,OU=Domain Controllers,... and
+    # CN=NTFRS Subscriptions,CN=<DC>,...), not in the Configuration NC.
     dfsr_present = False
     try:
         dfsr_entries = paged_search(
-            conn, config_nc,
-            "(objectClass=msDFSR-LocalSettings)",
+            conn, domain.dn,
+            "(&(objectClass=msDFSR-Subscription)(cn=SYSVOL Subscription))",
             ["distinguishedName"],
         )
         dfsr_present = len(dfsr_entries) > 0
@@ -258,7 +257,7 @@ def _check_gpo002(conn: Connection, domain: DomainInfo) -> CheckResult:
     frs_present = False
     try:
         frs_entries = paged_search(
-            conn, config_nc,
+            conn, domain.dn,
             "(objectClass=nTFRSSubscriber)",
             ["distinguishedName"],
         )

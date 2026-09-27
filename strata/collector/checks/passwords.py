@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 from ldap3 import Connection
 from ...models import Category, CheckResult, Complexity, DomainInfo, Severity
 from ..connection import paged_search, SECURITY_DESCRIPTOR_CONTROL
+from ..sysvol import read_gpttmpl
 
 log = logging.getLogger(__name__)
 
@@ -52,15 +53,40 @@ REF_PWD = (
 )
 
 
+# Well-known GUID of the Default Domain Policy GPO
+_DEFAULT_DOMAIN_POLICY_GUID = "{31B2F340-016D-11D2-945F-00C04FB984F9}"
+
+
 def _get_domain_policy(conn: Connection, domain_dn: str) -> dict:
     """Fetch domain-level password policy attributes."""
     entries = paged_search(
         conn, domain_dn,
         "(objectClass=domain)",
         ["minPwdLength", "maxPwdAge", "minPwdAge",
-         "pwdHistoryLength", "pwdProperties"],
+         "pwdHistoryLength", "pwdProperties", "lockoutThreshold"],
     )
     return entries[0] if entries else {}
+
+
+def _max_pwd_age_days(raw) -> int | None:
+    """
+    Days in maxPwdAge, or None if passwords never expire.
+    ldap3 formats maxPwdAge as a timedelta (timedelta.max for "never"); a raw
+    value is negative 100 ns intervals, with 0 or INT64_MIN meaning "never".
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, timedelta):
+        if raw == timedelta.max or raw == timedelta(0):
+            return None
+        return abs(raw).days
+    try:
+        ticks = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if ticks == 0 or ticks == -(2 ** 63):
+        return None
+    return abs(ticks) // 864_000_000_000
 
 
 def _check_pwd001(conn: Connection, domain: DomainInfo) -> CheckResult:
@@ -174,19 +200,9 @@ def _check_pwd004(conn: Connection, domain: DomainInfo) -> CheckResult:
     ref = "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/maximum-password-age"
 
     policy = _get_domain_policy(conn, domain.dn)
-    max_age_raw = _first(policy.get("maxPwdAge"))
-    try:
-        max_age = int(max_age_raw) if max_age_raw is not None else 0
-    except (TypeError, ValueError):
-        max_age = 0
-
-    # maxPwdAge is stored as negative 100ns intervals; 0 = never expires
-    if max_age == 0:
-        days = 0
-        never_expires = True
-    else:
-        days = abs(max_age) // 864_000_000_000
-        never_expires = False
+    max_age_days = _max_pwd_age_days(_first(policy.get("maxPwdAge")))
+    never_expires = max_age_days is None
+    days = max_age_days or 0
 
     if never_expires or days > 365:
         detail = (
@@ -434,6 +450,157 @@ def _check_pwd008(conn: Connection, domain: DomainInfo) -> CheckResult:
     )
 
 
+def _check_pwd009(conn: Connection, domain: DomainInfo) -> CheckResult:
+    """PWD-009: Domain password policy weakness (multiple factors)."""
+    check_id = "PWD-009"
+    name = "Domain password policy weakness"
+    desc = (
+        "Domain password policy has one or more weaknesses: "
+        "minimum length < 8, complexity not enforced, "
+        "history < 3, maximum age > 42 days or unlimited, "
+        "or account lockout threshold = 0"
+    )
+    sev = Severity.HIGH
+    weight = 8
+    ref = "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory"
+
+    policy = _get_domain_policy(conn, domain.dn)
+
+    # Check minimum password length
+    min_len_raw = _first(policy.get("minPwdLength"))
+    try:
+        min_len = int(min_len_raw) if min_len_raw is not None else 0
+    except (TypeError, ValueError):
+        min_len = 0
+
+    # Check complexity
+    pwd_props_raw = _first(policy.get("pwdProperties"))
+    try:
+        pwd_props = int(pwd_props_raw) if pwd_props_raw is not None else 0
+    except (TypeError, ValueError):
+        pwd_props = 0
+
+    complexity_enabled = (pwd_props & 0x01) != 0
+
+    # Check password history
+    hist_raw = _first(policy.get("pwdHistoryLength"))
+    try:
+        hist = int(hist_raw) if hist_raw is not None else 0
+    except (TypeError, ValueError):
+        hist = 0
+
+    # Check maximum password age
+    max_age_days = _max_pwd_age_days(_first(policy.get("maxPwdAge")))
+    never_expires = max_age_days is None
+    max_age_days = max_age_days or 0
+
+    # Check lockout threshold — need to fetch from domain policy
+    lockout_threshold_raw = _first(policy.get("lockoutThreshold"))
+    try:
+        lockout_threshold = int(lockout_threshold_raw) if lockout_threshold_raw is not None else 0
+    except (TypeError, ValueError):
+        lockout_threshold = 0
+
+    issues = []
+    if min_len < 8:
+        issues.append(f"min length {min_len} (recommended: 8+)")
+    if not complexity_enabled:
+        issues.append("complexity not enforced")
+    if hist < 3:
+        issues.append(f"password history {hist} (recommended: 3+)")
+    if never_expires or max_age_days > 42:
+        issues.append(
+            f"max age {'unlimited' if never_expires else f'{max_age_days} days'} "
+            "(recommended: ≤42 days)"
+        )
+    if lockout_threshold == 0:
+        issues.append("account lockout threshold = 0 (no lockout protection)")
+
+    if not issues:
+        remediation_ps = (
+            f"Set-ADDefaultDomainPasswordPolicy -Identity \"{domain.name}\" "
+            "-MinPasswordLength 14 -ComplexityEnabled $true -PasswordHistoryCount 24 "
+            "-MaxPasswordAge (New-TimeSpan -Days 42) -LockoutThreshold 5 -WhatIf"
+        )
+        return _ok(check_id, name, domain.name, desc, sev, weight,
+                   best_practice_ps=remediation_ps, reference=ref)
+
+    remediation_ps = (
+        f"# Strengthen domain password policy:\n"
+        f"Set-ADDefaultDomainPasswordPolicy -Identity \"{domain.name}\" "
+        f"-MinPasswordLength 14 -ComplexityEnabled $true -PasswordHistoryCount 24 "
+        f"-MaxPasswordAge (New-TimeSpan -Days 42) -LockoutThreshold 5 -WhatIf"
+    )
+
+    return _fail(check_id, name, domain.name, desc, sev, weight,
+                 f"Policy weakness detected: {'; '.join(issues)}",
+                 remediation_ps=remediation_ps,
+                 best_practice_ps=remediation_ps,
+                 reference=ref)
+
+
+def _check_pwd010(conn: Connection, domain: DomainInfo) -> CheckResult:
+    """PWD-010: Kerberos ticket lifetime misconfigured."""
+    check_id = "PWD-010"
+    name = "Kerberos ticket lifetime misconfigured"
+    desc = (
+        "Kerberos user ticket (TGT) lifetime > 10 hours, renewal lifetime > 7 days, "
+        "or service ticket lifetime > 600 minutes — increases the window for "
+        "forged/stolen tickets. Read from the Default Domain Policy's GptTmpl.inf "
+        "[Kerberos Policy]; Kerberos policy is not stored as an LDAP attribute."
+    )
+    sev = Severity.MEDIUM
+    weight = 5
+    ref = "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/kerberos-policy"
+
+    remediation_ps = (
+        "# Kerberos policy is set in the Default Domain Policy GPO:\n"
+        "# Computer Configuration > Policies > Windows Settings > Security Settings >\n"
+        "#   Account Policies > Kerberos Policy\n"
+        "#   Maximum lifetime for user ticket          = 10 hours\n"
+        "#   Maximum lifetime for user ticket renewal  = 7 days\n"
+        "#   Maximum lifetime for service ticket       = 600 minutes\n"
+        "Get-GPOReport -Name 'Default Domain Policy' -ReportType Xml | Select-String 'MaxTicketAge|MaxRenewAge|MaxServiceAge'"
+    )
+
+    sections = read_gpttmpl(domain.dc_hostname, domain.name, _DEFAULT_DOMAIN_POLICY_GUID)
+    if sections is None:
+        return _ok(check_id, name, domain.name,
+                   desc + " SYSVOL was not accessible; verify manually.",
+                   sev, weight, best_practice_ps=remediation_ps, reference=ref)
+
+    # Absent values fall back to the Windows defaults (10 h / 7 d / 600 min).
+    krb = sections.get("kerberos policy", {})
+
+    def _int(key: str, default: int) -> int:
+        try:
+            return int(krb.get(key, default))
+        except (TypeError, ValueError):
+            return default
+
+    max_tgt_hours = _int("maxticketage", 10)
+    max_renew_days = _int("maxrenewage", 7)
+    max_svc_mins = _int("maxserviceage", 600)
+
+    issues = []
+    if max_tgt_hours > 10:
+        issues.append(f"user ticket lifetime {max_tgt_hours}h (recommended: ≤10h)")
+    if max_renew_days > 7:
+        issues.append(f"renewal lifetime {max_renew_days}d (recommended: ≤7d)")
+    if max_svc_mins > 600:
+        issues.append(f"service ticket lifetime {max_svc_mins}min (recommended: ≤600min)")
+
+    if not issues:
+        return _ok(check_id, name, domain.name, desc, sev, weight,
+                   best_practice_ps=remediation_ps, reference=ref)
+
+    return _fail(check_id, name, domain.name, desc, sev, weight,
+                 f"Kerberos policy weakness: {'; '.join(issues)}",
+                 remediation_ps=remediation_ps,
+                 best_practice_ps=remediation_ps,
+                 reference=ref)
+
+
 _CHECKS = [
     _check_pwd001,
     _check_pwd002,
@@ -443,6 +610,8 @@ _CHECKS = [
     _check_pwd006,
     _check_pwd007,
     _check_pwd008,
+    _check_pwd009,
+    _check_pwd010,
 ]
 
 

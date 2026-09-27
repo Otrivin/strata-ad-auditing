@@ -519,12 +519,15 @@ def _check_acl005(conn: Connection, domain: DomainInfo, sid_cache: dict | None =
     CREATE_CHILD = 0x00000001
     TARGET_SIDS = {"S-1-5-11", "S-1-1-0"}  # Authenticated Users, Everyone
 
-    # Derive the domain name label (e.g. "corp" from "corp.example.com")
-    domain_label = domain.name.split(".")[0] if domain.name else ""
+    forest_dn = ",".join(f"DC={p}" for p in domain.forest.split("."))
 
+    # Zones live under the MicrosoftDNS container of each DNS application
+    # partition (or CN=System for legacy domain-NC zones); the zone objects
+    # are named by FQDN (DC=corp.example.com), so search the container.
     candidate_bases = [
         f"CN=MicrosoftDNS,CN=System,{domain.dn}",
-        f"DC={domain_label},CN=MicrosoftDNS,DC=DomainDnsZones,{domain.dn}",
+        f"CN=MicrosoftDNS,DC=DomainDnsZones,{domain.dn}",
+        f"CN=MicrosoftDNS,DC=ForestDnsZones,{forest_dn}",
     ]
 
     flagged_zones: list[str] = []

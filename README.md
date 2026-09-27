@@ -1,7 +1,7 @@
 # strata-active-directory-auditing
 
 An Active Directory auditor that runs checks for common misconfigurations and bad practices. Connects to a Domain Controller
-via Kerberos GSSAPI (no passwords stored), runs **87 security checks** across 8 categories against every domain in the forest and produces the following:
+via Kerberos GSSAPI (no passwords stored), runs **112 security checks** across 8 categories against every domain in the forest and produces the following:
 
 - HTML report for all checks, remediations and prioritization
 - An interactive Terminal TUI with result comparison so you can see the trend
@@ -13,13 +13,13 @@ This tool runs with READ ONLY access to your domain controller, but it is always
 
 | Category       | Checks | What it covers                                                       |
 | -------------- | -----: | -------------------------------------------------------------------- |
-| Accounts       |     24 | Stale privileged accounts, AS-REP / Kerberoast, Protected Users, krbtgt rotation, Pre-Win2000 group, etc. |
-| Delegation     |      7 | Unconstrained / constrained / RBCD, MachineAccountQuota, delegatable privileged accounts |
-| Passwords      |      8 | Domain policy, fine-grained PSO for service accounts, NTLMv2, anonymous LDAP, WDigest |
+| Accounts       |     38 | Stale/never-logged-in accounts, AS-REP/Kerberoast, Protected Users, krbtgt rotation, blank passwords, sensitive descriptions, delegation checks, UPN mismatches, stale/never-logged-in computers, service account config, legacy encryption, etc. |
+| Delegation     |      8 | Unconstrained / constrained / RBCD, MachineAccountQuota, delegatable privileged accounts, FSMO roles held by deleted/missing DCs |
+| Passwords      |     10 | Domain policy, fine-grained PSO for service accounts, NTLMv2, anonymous LDAP, WDigest, password policy weakness, Kerberos ticket lifetime |
 | Trusts         |      4 | SID filtering, transitive trusts, MIT trusts, unexpected directions  |
-| ACLs           |      6 | DCSync rights, AdminSDHolder, dangerous ACEs on privileged groups, OU protection, DNS zone rights |
+| ACLs           |      7 | DCSync rights, AdminSDHolder, dangerous ACEs on privileged groups, OU protection, DNS zone rights, inherited/direct ACLs on OUs and domain roots |
 | Group Policy   |     20 | LLMNR, hardened UNC paths, Kerberos armoring (FAST), PowerShell logging, RDP/NLA, Defender ASR, RestrictRemoteSAM, audit policy, LDAP signing & channel binding (CVE-2021-42291) |
-| Infrastructure |     13 | Functional levels, LAPS, Recycle Bin, RC4/DES on DCs, dsHeuristics, DC count, AD backup status |
+| Infrastructure |     20 | Functional levels, LAPS, Recycle Bin, RC4/DES on DCs, dsHeuristics, DC count, AD backup status, schema version, FSMO concentration, infrastructure master on a GC, sites/subnets, replication |
 | Certificates   |      5 | ADCS ESC1 / ESC2 / ESC3 / ESC4 / ESC6                                |
 
 Each finding carries a **priority score** computed as

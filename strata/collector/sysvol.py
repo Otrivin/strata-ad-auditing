@@ -1,4 +1,4 @@
-"""SYSVOL registry.pol reader — uses smbprotocol + krb5 with Kerberos ticket cache."""
+"""SYSVOL Registry.pol / GptTmpl.inf reader — uses smbprotocol + krb5 with Kerberos ticket cache."""
 from __future__ import annotations
 
 import logging
@@ -145,16 +145,92 @@ def _read_smb_file(tree, path: str, max_size: int = 4 * 1024 * 1024) -> bytes | 
             pass
 
 
-def collect_gpo_settings(
-    dc_host: str, domain_fqdn: str, gpo_guids: list[str], machine: bool = True
+_GPTTMPL_SUBPATH = "MACHINE\\Microsoft\\Windows NT\\SecEdit\\GptTmpl.inf"
+
+
+def parse_gpttmpl(data: bytes) -> dict[str, dict[str, str]]:
+    """
+    Parse a GptTmpl.inf security template (UTF-16LE with BOM, or UTF-8).
+    Returns {lower_section: {lower_key: raw_value}}. For sections whose lines
+    have no '=' (e.g. [Service General Setting]) the whole line is the key.
+    """
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        text = data.decode("utf-16", errors="replace")
+    else:
+        text = data.decode("utf-8-sig", errors="replace")
+    sections: dict[str, dict[str, str]] = {}
+    current: dict[str, str] | None = None
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith(";"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current = sections.setdefault(line[1:-1].strip().lower(), {})
+            continue
+        if current is None:
+            continue
+        if "=" in line:
+            k, v = line.split("=", 1)
+            current[k.strip().lower()] = v.strip()
+        else:
+            current[line.lower()] = ""
+    return sections
+
+
+def gpttmpl_registry_settings(
+    sections: dict[str, dict[str, str]],
 ) -> dict[tuple[str, str], tuple[int, bytes]]:
     """
-    Read Machine/Registry.pol (or User/Registry.pol) for each GPO GUID via SMB.
-    Uses the Kerberos ticket cache (no passwords). Returns merged settings dict.
-    Last writer wins when the same key appears in multiple GPOs.
-    Returns empty dict if SMB is not available or all reads fail.
+    Convert GptTmpl.inf Security Options and service startup modes into the
+    same {(lower_key, lower_value_name): (reg_type, raw_data)} shape that
+    parse_registry_pol() returns, so the same lookups apply to both.
+
+    [Registry Values]         MACHINE\\<key>\\<value>=<type>,<data>
+    [Service General Setting] "<service>",<startup mode>,"<sddl>"
+                              → System\\CurrentControlSet\\Services\\<service> Start
     """
-    merged: dict[tuple[str, str], tuple[int, bytes]] = {}
+    result: dict[tuple[str, str], tuple[int, bytes]] = {}
+    for path, raw in sections.get("registry values", {}).items():
+        if "," not in raw or "\\" not in path:
+            continue
+        vtype_s, vdata_s = raw.split(",", 1)
+        try:
+            vtype = int(vtype_s)
+        except ValueError:
+            continue
+        if path.startswith("machine\\"):
+            path = path[len("machine\\"):]
+        key, vname = path.rsplit("\\", 1)
+        if vtype == REG_DWORD:
+            try:
+                vdata = struct.pack("<I", int(vdata_s.strip().strip('"')) & 0xFFFFFFFF)
+            except ValueError:
+                continue
+        else:
+            vdata = (vdata_s.strip().strip('"') + "\x00").encode("utf-16-le")
+        result[(key, vname)] = (vtype, vdata)
+    for line in sections.get("service general setting", {}):
+        parts = [p.strip().strip('"') for p in line.split(",")]
+        if len(parts) < 2:
+            continue
+        try:
+            start = int(parts[1])
+        except ValueError:
+            continue
+        key = f"system\\currentcontrolset\\services\\{parts[0]}"
+        result[(key, "start")] = (REG_DWORD, struct.pack("<I", start))
+    return result
+
+
+def _read_sysvol_files(
+    dc_host: str, domain_fqdn: str, gpo_guids: list[str], subpaths: list[str]
+) -> dict[str, dict[str, bytes]]:
+    """
+    Read Policies\\<guid>\\<subpath> from SYSVOL via SMB for each GUID/subpath.
+    Uses the Kerberos ticket cache (no passwords). Returns {guid: {subpath: bytes}}
+    containing only files that were read; empty if SMB is unavailable.
+    """
+    out: dict[str, dict[str, bytes]] = {}
     try:
         import uuid
         from smbprotocol.connection import Connection
@@ -162,7 +238,7 @@ def collect_gpo_settings(
         from smbprotocol.tree import TreeConnect
     except ImportError:
         log.debug("smbprotocol not available; SYSVOL GPO checks skipped")
-        return merged
+        return out
 
     _ensure_krb5ccname()
 
@@ -182,14 +258,13 @@ def collect_gpo_settings(
                 x.disconnect() if x else None
             except Exception:
                 pass
-        return merged
+        return out
 
-    pol_sub = "Machine" if machine else "User"
     for guid in gpo_guids:
-        path = f"{domain_fqdn}\\Policies\\{guid}\\{pol_sub}\\Registry.pol"
-        data = _read_smb_file(tree, path)
-        if data:
-            merged.update(parse_registry_pol(data))
+        for sub in subpaths:
+            data = _read_smb_file(tree, f"{domain_fqdn}\\Policies\\{guid}\\{sub}")
+            if data:
+                out.setdefault(guid, {})[sub] = data
 
     for x, label in ((tree, "tree"), (sess, "session"), (conn, "connection")):
         try:
@@ -197,4 +272,38 @@ def collect_gpo_settings(
         except Exception as exc:
             log.debug("SMB %s disconnect failed: %s", label, exc)
 
+    return out
+
+
+def collect_gpo_settings(
+    dc_host: str, domain_fqdn: str, gpo_guids: list[str], machine: bool = True
+) -> dict[tuple[str, str], tuple[int, bytes]]:
+    """
+    Read Machine/Registry.pol (or User/Registry.pol) for each GPO GUID via SMB.
+    For machine settings, Security Options ([Registry Values]) and service
+    startup modes from MACHINE\\...\\SecEdit\\GptTmpl.inf are merged in too —
+    GPMC stores those there, never in Registry.pol.
+    Uses the Kerberos ticket cache (no passwords). Returns merged settings dict.
+    Last writer wins when the same key appears in multiple GPOs.
+    Returns empty dict if SMB is not available or all reads fail.
+    """
+    pol_sub = f"{'Machine' if machine else 'User'}\\Registry.pol"
+    subpaths = [pol_sub, _GPTTMPL_SUBPATH] if machine else [pol_sub]
+    files = _read_sysvol_files(dc_host, domain_fqdn, gpo_guids, subpaths)
+
+    merged: dict[tuple[str, str], tuple[int, bytes]] = {}
+    for guid in gpo_guids:
+        per_gpo = files.get(guid, {})
+        if pol_sub in per_gpo:
+            merged.update(parse_registry_pol(per_gpo[pol_sub]))
+        if _GPTTMPL_SUBPATH in per_gpo:
+            merged.update(gpttmpl_registry_settings(parse_gpttmpl(per_gpo[_GPTTMPL_SUBPATH])))
     return merged
+
+
+def read_gpttmpl(dc_host: str, domain_fqdn: str, gpo_guid: str) -> dict[str, dict[str, str]] | None:
+    """Read and parse one GPO's GptTmpl.inf. None if SYSVOL or the file is unreadable."""
+    data = _read_sysvol_files(dc_host, domain_fqdn, [gpo_guid], [_GPTTMPL_SUBPATH]).get(gpo_guid, {})
+    if _GPTTMPL_SUBPATH not in data:
+        return None
+    return parse_gpttmpl(data[_GPTTMPL_SUBPATH])

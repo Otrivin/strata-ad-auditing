@@ -459,6 +459,49 @@ table.data tbody tr:last-child td { border-bottom: none; }
 }
 .affected-count.has-items { color: var(--orange); font-weight: 600; }
 
+/* ── Filter controls (roadmap & explorer) ────────────── */
+.filter-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+.filter-group {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.filter-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted);
+}
+.filter-chips {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.filter-select,
+.filter-search {
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+.filter-select:focus,
+.filter-search:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15);
+}
+.filter-counter {
+  grid-column: 1 / -1;
+  font-size: 0.78rem; color: var(--text-muted); text-align: right;
+  padding-top: 8px; border-top: 1px solid var(--border-soft);
+}
+
 /* ── Category breakdown ──────────────────────────────────── */
 .cat-grid {
   display: grid;
@@ -531,6 +574,9 @@ table.data tbody tr:last-child td { border-bottom: none; }
 .explorer-controls {
   display: flex; gap: 12px; flex-wrap: wrap;
   margin-bottom: 18px; align-items: center;
+}
+.explorer-counter {
+  font-size: 0.78rem; color: var(--text-muted); margin-left: auto;
 }
 .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .fchip {
@@ -946,6 +992,50 @@ footer a:hover { color: var(--blue); }
     <span class="badge" style="background: linear-gradient(135deg, var(--purple), var(--pink)); color:#1a1b26;">{{ roadmap|length }} actionable findings</span>
   </div>
 
+  {# ── Roadmap filters ── #}
+  {% if roadmap %}
+  <div class="filter-section">
+    <div class="filter-group">
+      <div class="filter-label">Status</div>
+      <div class="filter-chips" id="roadmap-status-filter">
+        <button class="fchip active" data-status="ALL">All</button>
+        <button class="fchip" data-status="failed">Failed</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-label">Severity</div>
+      <div class="filter-chips" id="roadmap-sev-filter">
+        <button class="fchip active" data-sev="ALL">All</button>
+        <button class="fchip" data-sev="CRITICAL">Critical</button>
+        <button class="fchip" data-sev="HIGH">High</button>
+        <button class="fchip" data-sev="MEDIUM">Medium</button>
+        <button class="fchip" data-sev="LOW">Low</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-label">Category</div>
+      <select class="filter-select" id="roadmap-cat-filter">
+        <option value="ALL">All categories</option>
+        {% for cat in Category %}
+        <option value="{{ cat.value }}">{{ cat | cat_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <div class="filter-label">Search</div>
+      <input type="text" class="filter-search" id="roadmap-search"
+             placeholder="Check ID, name, domain…" autocomplete="off">
+    </div>
+
+    <div class="filter-counter" id="roadmap-counter">
+      Showing <span id="roadmap-visible-count">{{ roadmap|length }}</span> of {{ roadmap|length }} findings
+    </div>
+  </div>
+  {% endif %}
+
   {% if roadmap %}
   <div class="roadmap-table-wrap">
     <table class="data" id="roadmap-table">
@@ -968,7 +1058,11 @@ footer a:hover { color: var(--blue); }
           {% set ps = r.priority_score() %}
           {% set rank = loop.index %}
           {% set rank_class = "top1" if rank == 1 else ("top3" if rank <= 3 else "") %}
-          <tr>
+          <tr class="roadmap-row"
+              data-sev="{{ r.severity | sev_label }}"
+              data-cat="{{ r.category.value }}"
+              data-status="failed"
+              data-search="{{ (r.check_id ~ ' ' ~ r.name ~ ' ' ~ r.domain) | lower }}">
             <td class="rank {{ rank_class }}">#{{ rank }}</td>
             <td><span class="priority-score {{ ps | priority_class }}" data-val="{{ ps }}">{{ "%.1f"|format(ps) }}</span></td>
             <td><span class="pill sev" style="--pill-bg: {{ sc }};">{{ r.severity | sev_label }}</span></td>
@@ -1042,6 +1136,9 @@ footer a:hover { color: var(--blue); }
     </select>
     <input type="text" class="explorer-search" id="finding-search"
            placeholder="Search by check ID or name…" autocomplete="off">
+    <span class="explorer-counter">
+      <span id="explorer-visible-count">{{ snapshot.results|length }}</span> of {{ snapshot.results|length }}
+    </span>
   </div>
 
   <div class="roadmap-table-wrap">
@@ -1206,6 +1303,7 @@ footer a:hover { color: var(--blue); }
       Generated <strong>{{ generated_at }}</strong>
       &middot; STRATA <code style="font-family:var(--font-mono); color:var(--text);">v{{ tool_version }}</code>
       &middot; Read-only Kerberos audit
+      &middot; <a href="help.html">Score guide</a>
     </div>
     <div>
       Reference:
@@ -1248,17 +1346,17 @@ function copyPs(btn) {
   });
 }
 
-// ── Findings explorer: filter chips + search + category ──
+// ── Roadmap table filtering ────────────────────────────
 (function () {
   var sevFilter = 'ALL';
   var statusFilter = null;
   var catFilter = 'ALL';
   var searchQ = '';
 
-  var rows = document.querySelectorAll('#findings-table tbody tr.expand');
-  var detailRows = document.querySelectorAll('#findings-table tbody tr.detail-row');
+  var rows = document.querySelectorAll('#roadmap-table tbody tr.roadmap-row');
 
   function apply() {
+    var visibleCount = 0;
     rows.forEach(function (row) {
       var sev = row.getAttribute('data-sev');
       var cat = row.getAttribute('data-cat');
@@ -1272,6 +1370,72 @@ function copyPs(btn) {
 
       var visible = sevOk && statusOk && catOk && searchOk;
       row.classList.toggle('is-hidden', !visible);
+      if (visible) visibleCount++;
+    });
+    var counter = document.getElementById('roadmap-visible-count');
+    if (counter) counter.textContent = visibleCount;
+  }
+
+  document.querySelectorAll('#roadmap-status-filter .fchip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var status = chip.getAttribute('data-status');
+      if (status === 'ALL') {
+        statusFilter = null;
+      } else {
+        statusFilter = status;
+      }
+      document.querySelectorAll('#roadmap-status-filter .fchip').forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      apply();
+    });
+  });
+
+  document.querySelectorAll('#roadmap-sev-filter .fchip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var sev = chip.getAttribute('data-sev');
+      sevFilter = sev;
+      document.querySelectorAll('#roadmap-sev-filter .fchip').forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      apply();
+    });
+  });
+
+  var catSel = document.getElementById('roadmap-cat-filter');
+  if (catSel) catSel.addEventListener('change', function () { catFilter = this.value; apply(); });
+
+  var search = document.getElementById('roadmap-search');
+  if (search) search.addEventListener('input', function () {
+    searchQ = this.value.trim().toLowerCase();
+    apply();
+  });
+})();
+
+// ── Findings explorer: filter chips + search + category ──
+(function () {
+  var sevFilter = 'ALL';
+  var statusFilter = null;
+  var catFilter = 'ALL';
+  var searchQ = '';
+
+  var rows = document.querySelectorAll('#findings-table tbody tr.expand');
+  var detailRows = document.querySelectorAll('#findings-table tbody tr.detail-row');
+
+  function apply() {
+    var visibleCount = 0;
+    rows.forEach(function (row) {
+      var sev = row.getAttribute('data-sev');
+      var cat = row.getAttribute('data-cat');
+      var status = row.getAttribute('data-status');
+      var search = row.getAttribute('data-search') || '';
+
+      var sevOk = (sevFilter === 'ALL') || (sev === sevFilter);
+      var statusOk = !statusFilter || (status === statusFilter);
+      var catOk = (catFilter === 'ALL') || (cat === catFilter);
+      var searchOk = !searchQ || search.indexOf(searchQ) !== -1;
+
+      var visible = sevOk && statusOk && catOk && searchOk;
+      row.classList.toggle('is-hidden', !visible);
+      if (visible) visibleCount++;
 
       var det = document.getElementById('detail-' + row.id.replace('row-', ''));
       if (det && !visible) {
@@ -1281,6 +1445,8 @@ function copyPs(btn) {
         det.classList.remove('is-hidden');
       }
     });
+    var counter = document.getElementById('explorer-visible-count');
+    if (counter) counter.textContent = visibleCount;
   }
 
   document.querySelectorAll('#sev-filter .fchip').forEach(function (chip) {
@@ -1344,6 +1510,28 @@ function copyPs(btn) {
         return av.localeCompare(bv) * dir;
       });
       rows.forEach(function (r) { tbody.appendChild(r); });
+    });
+  });
+})();
+
+// ── Category breakdown clicks ────────────────────────────
+(function () {
+  document.querySelectorAll('.cat-tile').forEach(function (tile) {
+    tile.addEventListener('click', function (e) {
+      e.preventDefault();
+      var href = tile.getAttribute('href');
+      if (href && href.startsWith('#cat-')) {
+        var explorerSection = document.getElementById('explorer');
+        if (explorerSection) {
+          explorerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          var catValue = href.substring(5);
+          var catSel = document.getElementById('cat-filter');
+          if (catSel) {
+            catSel.value = catValue;
+            catSel.dispatchEvent(new Event('change'));
+          }
+        }
+      }
     });
   });
 })();

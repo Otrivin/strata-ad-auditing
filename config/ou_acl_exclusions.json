@@ -1,0 +1,12 @@
+{
+  "ou_acl_exclusions": {
+    "sids": [
+      "S-1-5-21-3623811015-3361044348-30300820-1013"
+    ],
+    "account_names": [
+      "svc_sql",
+      "svc_exchange",
+      "DOMAIN\\ServiceAccount1"
+    ]
+  }
+}

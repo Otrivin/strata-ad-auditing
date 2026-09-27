@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STRATA — Scoring & Roadmap Help</title>
+<style>
+/* ── Tokyo Night palette ─────────────────────────────────── */
+:root {
+  --bg:           #1a1b26;
+  --bg-gradient:  radial-gradient(ellipse at top, #2f334d 0%, #1a1b26 60%);
+  --surface:      #24283b;
+  --surface-hi:   #2f334d;
+  --border:       #414868;
+  --border-soft:  rgba(65, 72, 104, 0.4);
+  --text:         #c0caf5;
+  --text-muted:   #9aa5ce;
+  --text-dim:     #565f89;
+
+  --blue:    #7aa2f7;
+  --purple:  #bb9af7;
+  --cyan:    #7dcfff;
+  --green:   #9ece6a;
+  --yellow:  #e0af68;
+  --orange:  #ff9e64;
+  --red:     #f7768e;
+  --pink:    #ff79c6;
+
+  --radius:      12px;
+  --radius-sm:   8px;
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow:      0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-lg:   0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+
+  --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+a { color: var(--blue); text-decoration: none; transition: color .15s; }
+a:hover { color: var(--cyan); }
+
+.container { max-width: 900px; margin: 0 auto; padding: 0 32px; }
+
+.hero {
+  background: linear-gradient(135deg, #1f2335 0%, #24283b 50%, #2a2f48 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 48px 0;
+  margin-bottom: 48px;
+}
+
+.brand {
+  display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px;
+}
+.brand-mark {
+  font-size: 1.8rem; font-weight: 900; letter-spacing: 0.18em;
+  background: linear-gradient(90deg, #cba6f7 0%, #f5c2e7 33%, #89b4fa 66%, #89dceb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.brand-mark::before { content: "✦ "; -webkit-text-fill-color: #cba6f7; color: #cba6f7; }
+.brand-subtitle { color: var(--text-muted); font-size: 0.95rem; }
+
+h1 { font-size: 2.2rem; margin: 24px 0 6px; font-weight: 800; }
+.subtitle { color: var(--text-muted); font-size: 1.05rem; margin-bottom: 32px; }
+
+section {
+  margin: 48px 0;
+}
+
+h2 {
+  font-size: 1.6rem; font-weight: 700;
+  margin: 32px 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--cyan);
+}
+
+h3 {
+  font-size: 1.1rem; font-weight: 600;
+  margin: 24px 0 12px;
+  color: var(--text);
+}
+
+code {
+  background: rgba(65, 72, 104, 0.3);
+  border: 1px solid var(--border-soft);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  color: var(--cyan);
+  font-size: 0.92em;
+}
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin: 12px 0 24px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--green);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 20px 0;
+}
+
+.card.info {
+  border-left: 4px solid var(--blue);
+}
+.card.warning {
+  border-left: 4px solid var(--orange);
+}
+.card.success {
+  border-left: 4px solid var(--green);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: transform .2s, border-color .2s;
+}
+.tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--blue);
+}
+.tile-title { font-weight: 700; font-size: 1rem; color: var(--cyan); }
+.tile-value { font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; }
+.tile-label { font-size: 0.85rem; color: var(--text-muted); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+table thead {
+  background: var(--surface-hi);
+  border-bottom: 1px solid var(--border);
+}
+table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+table tr:hover {
+  background: rgba(122, 162, 247, 0.05);
+}
+
+.pill {
+  display: inline-block;
+  background: rgba(122, 162, 247, 0.15);
+  color: var(--blue);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.pill.critical { background: rgba(247, 118, 142, 0.15); color: var(--red); }
+.pill.high { background: rgba(255, 158, 100, 0.15); color: var(--orange); }
+.pill.medium { background: rgba(224, 175, 104, 0.15); color: var(--yellow); }
+.pill.low { background: rgba(158, 206, 106, 0.15); color: var(--green); }
+
+.example-box {
+  background: rgba(47, 51, 77, 0.5);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.callout {
+  background: linear-gradient(135deg, rgba(122, 162, 247, 0.08), rgba(187, 154, 247, 0.06));
+  border: 1px solid rgba(122, 162, 247, 0.25);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 20px 0;
+  line-height: 1.6;
+}
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 24px 0;
+  margin-top: 64px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 0 16px; }
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.3rem; }
+  table { font-size: 0.9rem; }
+  table th, table td { padding: 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="container">
+    <div class="brand">
+      <div class="brand-mark">STRATA</div>
+      <div class="brand-subtitle">Scoring & Remediation Guide</div>
+    </div>
+    <h1>Understanding Your Forest Score</h1>
+    <p class="subtitle">How STRATA calculates hardening posture and prioritizes remediation</p>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="forest-score">
+<h2>📊 Forest Score (0–100)</h2>
+
+<p>Your <strong>Forest Score</strong> is a single number that summarizes your Active Directory hardening posture across all 111 security checks.</p>
+
+<h3>How It's Calculated</h3>
+<pre>Forest Score = (Total Weight of Passing Checks)
+               ────────────────────────────────  × 100
+               (Total Weight of All Checks)</pre>
+
+<p>Each check has a <strong>weight</strong> (1–10) that reflects its importance in your infrastructure. Higher-weight checks contribute more to your score.</p>
+
+<h3>Score Bands</h3>
+<div class="grid">
+  <div class="tile">
+    <div class="tile-title">90–100</div>
+    <div class="tile-value" style="color: var(--green);">Excellent</div>
+    <div class="tile-label">Strong hardening across all areas</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">75–89</div>
+    <div class="tile-value" style="color: var(--green);">Good</div>
+    <div class="tile-label">Most critical issues addressed</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">50–74</div>
+    <div class="tile-value" style="color: var(--yellow);">Fair</div>
+    <div class="tile-label">Significant gaps, needs work</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">25–49</div>
+    <div class="tile-value" style="color: var(--orange);">Poor</div>
+    <div class="tile-label">Major hardening effort required</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">0–24</div>
+    <div class="tile-value" style="color: var(--red);">Critical</div>
+    <div class="tile-label">Severe security posture issues</div>
+  </div>
+</div>
+
+<div class="callout">
+<strong>⚠️ Key insight:</strong> Your forest score is a <em>health indicator</em>, not a performance metric. It tells you whether your hardening is adequate and tracks progress over time. It does NOT tell you what to fix first—that's what the Remediation Roadmap is for.
+</div>
+
+<h3>What Affects Your Score?</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Factor</th>
+      <th>Impact</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>High-weight failures</strong></td>
+      <td>Significant score reduction (−1% to −2%)</td>
+      <td>Blank passwords, dangerous ACLs, weak password policy</td>
+    </tr>
+    <tr>
+      <td><strong>Medium-weight failures</strong></td>
+      <td>Moderate score reduction (−0.5% to −1%)</td>
+      <td>Stale accounts, disabled accounts in admin groups</td>
+    </tr>
+    <tr>
+      <td><strong>Low-weight failures</strong></td>
+      <td>Minimal score reduction (&lt;−0.5%)</td>
+      <td>Niche hardening measures, cosmetic issues</td>
+    </tr>
+    <tr>
+      <td><strong>Passed checks</strong></td>
+      <td>Positive contribution</td>
+      <td>For every 10 passing high-weight checks, +1–2%</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Real-World Example</h3>
+<div class="example-box">
+Forest A: 105 passing, 6 failing (total weight ≈ 555)
+Failed weight: 54 (mostly medium/low)
+Score: (501 ÷ 555) × 100 = <strong>90.3 (Excellent)</strong>
+
+Forest B: 102 passing, 9 failing
+Failed weight: 56 (includes 1 CRITICAL high-weight)
+Score: (499 ÷ 555) × 100 = <strong>89.9 (Good)</strong>
+
+Same number of failures, but A scores higher because
+B's failures are in high-impact checks.
+</div>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="priority-score">
+<h2>🎯 Priority Score & Remediation Roadmap</h2>
+
+<p>Your <strong>Priority Score</strong> answers a different question: <em>"In what order should I fix failing checks?"</em> It's calculated per failing check and drives the Remediation Roadmap.</p>
+
+<h3>How It's Calculated</h3>
+<pre>Priority Score = (Severity Multiplier × Weight × Affected Count)
+                 ──────────────────────────────────────────────
+                 Complexity Score</pre>
+
+<p><strong>Key improvement:</strong> Priority score now scales by the <em>number of affected objects</em>. Fixing 150 stale accounts is prioritized higher than fixing 2 stale accounts.</p>
+
+<h3>Severity Levels</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Severity</th>
+      <th>Multiplier</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="pill critical">CRITICAL</span></td>
+      <td><strong>×10</strong></td>
+      <td>Business impact is immediate/severe</td>
+    </tr>
+    <tr>
+      <td><span class="pill high">HIGH</span></td>
+      <td><strong>×5</strong></td>
+      <td>Significant security risk</td>
+    </tr>
+    <tr>
+      <td><span class="pill medium">MEDIUM</span></td>
+      <td><strong>×2</strong></td>
+      <td>Moderate risk, should address soon</td>
+    </tr>
+    <tr>
+      <td><span class="pill low">LOW</span></td>
+      <td><strong>×1</strong></td>
+      <td>Minor hardening improvement</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Complexity Levels</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Complexity</th>
+      <th>Divisor</th>
+      <th>Description</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Trivial</strong></td>
+      <td>÷1</td>
+      <td>Single PowerShell command, zero risk</td>
+      <td>Enable Recycle Bin</td>
+    </tr>
+    <tr>
+      <td><strong>Easy</strong></td>
+      <td>÷2</td>
+      <td>Small change, low blast radius</td>
+      <td>Rotate krbtgt password</td>
+    </tr>
+    <tr>
+      <td><strong>Moderate</strong></td>
+      <td>÷3</td>
+      <td>GPO edit, policy change, group membership</td>
+      <td>Adjust password policy</td>
+    </tr>
+    <tr>
+      <td><strong>Hard</strong></td>
+      <td>÷4</td>
+      <td>Multi-step, requires planning</td>
+      <td>Deploy comprehensive hardening GPO</td>
+    </tr>
+    <tr>
+      <td><strong>Surgical</strong></td>
+      <td>÷5</td>
+      <td>ACL changes, trust mods, schema changes</td>
+      <td>Fix dangerous ACL on domain root</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Example Calculations</h3>
+
+<div class="card info">
+<strong>ACCT-028: Accounts with blank password enabled</strong>
+<div class="example-box" style="margin-top: 12px;">
+Severity: CRITICAL (×10)
+Weight: 8 (affects user logons)
+Affected: 5 accounts
+Complexity: EASY (÷2)
+
+Priority = (10 × 8 × 5) ÷ 2 = <strong>200</strong> ⭐ TOP PRIORITY
+→ Fix immediately
+</div>
+</div>
+
+<div class="card info">
+<strong>ACCT-025: Stale user accounts (90+ days inactive)</strong>
+<div class="example-box" style="margin-top: 12px;">
+Severity: MEDIUM (×2)
+Weight: 5
+Affected: 42 accounts
+Complexity: EASY (÷2)
+
+Priority = (2 × 5 × 42) ÷ 2 = <strong>210</strong> (HIGH)
+→ Schedule within 1–2 weeks
+</div>
+</div>
+
+<div class="card info">
+<strong>ACL-007: Dangerous ACL on domain root</strong>
+<div class="example-box" style="margin-top: 12px;">
+Severity: CRITICAL (×10)
+Weight: 9 (affects entire forest)
+Affected: 1 ACL
+Complexity: SURGICAL (÷5)
+
+Priority = (10 × 9 × 1) ÷ 5 = <strong>18</strong> (LOWER)
+→ Plan carefully; implement after easier fixes
+</div>
+</div>
+
+<h3>Roadmap Ordering</h3>
+
+<p>The Remediation Roadmap sorts findings by:</p>
+<ol style="margin: 12px 0 20px 20px;">
+  <li><strong>Severity first</strong> (CRITICAL → HIGH → MEDIUM → LOW)</li>
+  <li><strong>Then by priority score</strong> (highest first)</li>
+</ol>
+
+<p>This means you'll tackle all CRITICAL findings (in priority order) before any HIGH findings, ensuring you address the highest-risk items first.</p>
+
+<div class="callout">
+<strong>💡 Quick wins:</strong> The roadmap highlights issues with TRIVIAL or EASY complexity. These are high-impact, low-effort fixes you can tackle immediately.
+</div>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="severity-distribution">
+<h2>📈 Severity Distribution</h2>
+
+<p>The <strong>Findings at a glance</strong> section shows your risk distribution: how many CRITICAL, HIGH, MEDIUM, and LOW failures you have.</p>
+
+<p>This is crucial because your forest score doesn't distinguish between these. You could have a score of 75 (Good) with:</p>
+
+<ul style="margin: 12px 0 20px 20px;">
+  <li><strong>Profile A:</strong> 1 CRITICAL + 50 LOW failures</li>
+  <li><strong>Profile B:</strong> 51 LOW failures</li>
+</ul>
+
+<p>Both score the same, but Profile A has a catastrophic risk. The severity chip count tells the real story.</p>
+
+<h3>What Should I Target?</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Goal</th>
+      <th>Target Distribution</th>
+      <th>Example Forest</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Minimum (Lab)</strong></td>
+      <td>0 CRITICAL, ≤5 HIGH, any MEDIUM/LOW</td>
+      <td>Score: 70+ (Fair)</td>
+    </tr>
+    <tr>
+      <td><strong>Standard (Business)</strong></td>
+      <td>0 CRITICAL, 0 HIGH, ≤20 MEDIUM</td>
+      <td>Score: 85+ (Good)</td>
+    </tr>
+    <tr>
+      <td><strong>Hardened (Finance/Gov)</strong></td>
+      <td>0 CRITICAL, 0 HIGH, ≤5 MEDIUM, ≤10 LOW</td>
+      <td>Score: 92+ (Excellent)</td>
+    </tr>
+  </tbody>
+</table>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="affected-objects">
+<h2>📌 Affected Objects</h2>
+
+<p>Most findings include a list of <strong>affected objects</strong> (accounts, groups, domains, etc.) that are the root cause.</p>
+
+<h3>Impact on Priority Score</h3>
+
+<p>The priority score now scales with the number of affected objects:</p>
+
+<div class="example-box">
+ACCT-025 (Stale accounts):
+• 2 affected accounts → priority = 20
+• 180 affected accounts → priority = 1,800
+
+Same check, vastly different priority because 180 stale accounts
+represent a systemic lifecycle problem, not data entry mistakes.
+</div>
+
+<h3>Using This Information</h3>
+
+<ul style="margin: 12px 0 20px 20px;">
+  <li>
+    <strong>Few objects:</strong> Likely a one-time fix. Safe to defer until next maintenance window.
+  </li>
+  <li>
+    <strong>Many objects:</strong> Systemic problem. Escalate to process owners (IT ops, identity management, etc.). May require tooling/automation to remediate at scale.
+  </li>
+  <li>
+    <strong>Growing over time:</strong> Check the trend—is this getting worse? If so, prioritize foundational fixes (user lifecycle, account cleanup automation).
+  </li>
+</ul>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="using-the-report">
+<h2>🎯 Using the Report Effectively</h2>
+
+<h3>1. Start with Your Score</h3>
+<p>Your forest score is the headline. Is it Excellent (90+)? Good (75+)? If below 75, you have focused hardening work ahead.</p>
+
+<h3>2. Check the Severity Distribution</h3>
+<p>How many CRITICAL findings do you have? This is your risk ceiling. Even a 90-score forest with 2 CRITICAL findings is riskier than a 70-score forest with 0 CRITICAL findings.</p>
+
+<h3>3. Review the Remediation Roadmap</h3>
+<p>This is your action plan. Start at the top and work down. The top items are ordered by:</p>
+<ul style="margin: 12px 0 20px 20px;">
+  <li><strong>Severity first</strong> — tackle all CRITICALs before HIGHs</li>
+  <li><strong>Priority score second</strong> — within each severity tier, high-score items first</li>
+  <li><strong>Affected object count</strong> — scale accounts for systemic vs. one-off problems</li>
+</ul>
+
+<h3>4. Identify Quick Wins</h3>
+<p>Look for issues marked TRIVIAL or EASY complexity. These are items you can fix in hours or days. Knocking out 5–10 quick wins will visibly improve your forest score and build momentum.</p>
+
+<h3>5. Plan Surgical Fixes</h3>
+<p>Issues marked SURGICAL (ACLs, trusts, schema) require careful planning. Don't defer them, but schedule dedicated time with experienced AD admins. Test in a non-prod environment first.</p>
+
+<h3>6. Trend Over Time</h3>
+<p>Schedule regular scans (monthly, quarterly). Your trend matters more than any single scan. Are you improving? Holding steady? Declining? Use this to inform your hardening roadmap for the next quarter.</p>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="interpreting-roadmap">
+<h2>📋 Understanding Priority Scores in the Roadmap</h2>
+
+<div class="grid">
+  <div class="tile">
+    <div class="tile-title">Score ≥ 40</div>
+    <div class="tile-value" style="color: var(--red);">CRITICAL</div>
+    <div class="tile-label">Fix within 24–48 hours. High-severity, high-impact, low-effort.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">Score 20–39</div>
+    <div class="tile-value" style="color: var(--orange);">URGENT</div>
+    <div class="tile-label">Fix within 1 week. Often CRITICAL items with moderate effort.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">Score 10–19</div>
+    <div class="tile-value" style="color: var(--yellow);">HIGH</div>
+    <div class="tile-label">Fix within 2–4 weeks. Plan and schedule with change control.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">Score 5–9</div>
+    <div class="tile-value" style="color: var(--green);">SCHEDULE</div>
+    <div class="tile-label">Include in quarterly hardening work. Medium-term backlog.</div>
+  </div>
+  <div class="tile">
+    <div class="tile-title">Score &lt; 5</div>
+    <div class="tile-value" style="color: var(--text-muted);">BACKLOG</div>
+    <div class="tile-label">Address in general hardening cycles. Nice-to-have improvements.</div>
+  </div>
+</div>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="faqs">
+<h2>❓ Frequently Asked Questions</h2>
+
+<h3>Q: My score is 75. Is that acceptable?</h3>
+<p><strong>A:</strong> It depends. A lab or development forest at 75 is acceptable. A production forest should aim for 85+. A regulated environment (finance, healthcare) should target 90+. Also check your severity distribution—75 with 0 CRITICAL findings is much safer than 75 with 5 CRITICAL findings.</p>
+
+<h3>Q: Why does fixing one issue only improve my score by 0.5%?</h3>
+<p><strong>A:</strong> Your score is a weighted average across 111 checks. Each high-weight check is ~1–2% of your total. Fixing a low-weight check has minimal impact on the score, but may still be important for security. Don't optimize for the score number—optimize for reducing real risk.</p>
+
+<h3>Q: The roadmap says to fix ACL-007, but it's "surgical." Should I skip it?</h3>
+<p><strong>A:</strong> <strong>No.</strong> Don't skip it. ACL-007 is CRITICAL and affects your entire forest. Schedule dedicated time (2–4 weeks) with experienced admins, test in a non-prod environment, and implement with change control. Don't let "surgical" be an excuse to defer high-risk work indefinitely.</p>
+
+<h3>Q: I have 200 stale accounts. How do I know which to remediate first?</h3>
+<p><strong>A:</strong> Expand the ACCT-025 finding in the Findings Explorer. You'll see the full list of affected accounts. Prioritize by:</p>
+<ol style="margin: 12px 0 12px 20px;">
+  <li>Service accounts with privileges</li>
+  <li>Accounts with high-risk permissions</li>
+  <li>Accounts that haven't logged in in 2+ years</li>
+  <li>Finally, regular user accounts in normal groups</li>
+</ol>
+
+<h3>Q: Can I customize the severity levels or weights?</h3>
+<p><strong>A:</strong> Not yet through the UI, but check the configuration files in <code>config/</code>. Some exclusion lists and thresholds are configurable. For deeper customization, reach out to the strata team or file an issue.</p>
+
+<h3>Q: What does "Affected: 0" mean on a finding?</h3>
+<p><strong>A:</strong> It means the check <em>passed</em>. Only failing checks populate the affected objects list. If you see a passing check on the roadmap, it's informational or part of the trend analysis.</p>
+
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<section id="next-steps">
+<h2>🚀 Next Steps</h2>
+
+<ol style="margin: 12px 0 20px 20px;">
+  <li>
+    <strong>Review your Remediation Roadmap</strong> — identify your top 5 priority items
+  </li>
+  <li>
+    <strong>Tackle quick wins first</strong> — build momentum with TRIVIAL/EASY fixes (2–3 days)
+  </li>
+  <li>
+    <strong>Plan surgical fixes</strong> — schedule dedicated time with your AD admins (2–4 weeks)
+  </li>
+  <li>
+    <strong>Automate lifecycle tasks</strong> — if you have 100+ stale accounts, user lifecycle automation is foundational
+  </li>
+  <li>
+    <strong>Rescan in 30 days</strong> — measure progress, adjust priorities based on new findings
+  </li>
+  <li>
+    <strong>Aim for a monthly cadence</strong> — build hardening into your operational rhythm
+  </li>
+</ol>
+
+</section>
+
+<footer>
+<p>STRATA Active Directory Auditing v0.1.1</p>
+<p>Read-only Kerberos audit • No credentials stored • Outputs are local</p>
+</footer>
+
+</div>
+
+</body>
+</html>
