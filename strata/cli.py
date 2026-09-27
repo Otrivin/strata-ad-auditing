@@ -20,7 +20,7 @@ def _setup_logging(verbose: bool) -> None:
 
 
 @click.group()
-@click.version_option("0.1.0", prog_name="strata")
+@click.version_option("0.1.1", prog_name="strata")
 def main():
     """
     STRATA — Active Directory Auditing.
@@ -87,12 +87,12 @@ def scan(dc_host, principal, no_ssl, no_verify_ssl, verbose):
     from .collector.connection import LDAPConnectionError, ldap_connect
     from .collector.forest import discover_domains
     from .collector.checks import (
-        accounts, acls, certificates, delegation, gpo, infrastructure, passwords, trusts,
+        accounts, acls, certificates, delegation, gpo, infrastructure, passwords, trusts, ou_acls,
     )
     from .models import Snapshot
     from .scoring import compute_score
     from .trend import save_snapshot
-    from .reporter.html import generate_html_report
+    from .reporter.html import generate_html_report, generate_help_page
     from .reporter.log import write_scan_log
     from .reporter.ps import write_ps_scripts
     from .log_capture import capture_scan_log
@@ -120,7 +120,7 @@ def scan(dc_host, principal, no_ssl, no_verify_ssl, verbose):
             results_dir.mkdir(parents=True, exist_ok=True)
 
             all_results = []
-            check_modules = [accounts, delegation, passwords, trusts, acls, gpo, infrastructure, certificates]
+            check_modules = [accounts, delegation, passwords, trusts, acls, ou_acls, gpo, infrastructure, certificates]
 
             for domain in domains:
                 _prog(f"Scanning {domain.name} via {domain.dc_hostname}...")
@@ -167,11 +167,15 @@ def scan(dc_host, principal, no_ssl, no_verify_ssl, verbose):
     html_path = results_dir / "report.html"
     generate_html_report(snapshot, html_path)
 
+    help_path = results_dir / "help.html"
+    generate_help_page(help_path)
+
     ps_path = results_dir / "ps"
     write_ps_scripts(snapshot, ps_path)
 
     console.print(f"\n[green]Results:[/green]     {results_dir.resolve()}/")
     console.print(f"[green]HTML report:[/green] {html_path.resolve()}")
+    console.print(f"[green]Score guide:[/green] {help_path.resolve()}")
     console.print(f"[green]PS scripts:[/green]  {ps_path.resolve()}/")
     console.print(f"[green]Snapshot:[/green]    {snap_path.resolve()}")
     console.print(f"[green]Log:[/green]         {log_path.resolve()}")

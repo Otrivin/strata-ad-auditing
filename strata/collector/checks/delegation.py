@@ -300,6 +300,102 @@ def _check_deleg007(conn: Connection, domain: DomainInfo) -> CheckResult:
     )
 
 
+def _check_deleg008(conn: Connection, domain: DomainInfo) -> CheckResult:
+    """DELEG-008: FSMO roles owned by a deleted or missing domain controller."""
+    check_id = "DELEG-008"
+    name = "FSMO roles held by deleted or missing DCs"
+    desc = (
+        "A domain FSMO role owner (fSMORoleOwner) points to an NTDS Settings object that "
+        "is deleted or no longer exists — typically a DC removed without seizing its roles. "
+        "The domain cannot perform that role's operations until the role is seized. "
+        "Whether a live holder is reachable over the network is not tested."
+    )
+    sev = Severity.MEDIUM
+    weight = 4
+    ref = "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/fsmo-operations/fsmo-operations"
+
+    forest_dn = ",".join(f"DC={p}" for p in domain.forest.split("."))
+
+    # Query FSMO role owners
+    pdc_holder = None
+    rid_holder = None
+    infra_holder = None
+
+    try:
+        domain_entries = paged_search(
+            conn, domain.dn,
+            "(objectClass=domain)",
+            ["fSMORoleOwner"],
+        )
+        if domain_entries:
+            pdc_holder = _first(domain_entries[0].get("fSMORoleOwner"))
+    except Exception as exc:
+        log.debug("DELEG-008: PDC query failed: %s", exc)
+
+    try:
+        rid_entries = paged_search(
+            conn, f"CN=RID Manager$,CN=System,{domain.dn}",
+            "(objectClass=*)",
+            ["fSMORoleOwner"],
+        )
+        if rid_entries:
+            rid_holder = _first(rid_entries[0].get("fSMORoleOwner"))
+    except Exception as exc:
+        log.debug("DELEG-008: RID Manager query failed: %s", exc)
+
+    try:
+        infra_entries = paged_search(
+            conn, f"CN=Infrastructure,{domain.dn}",
+            "(objectClass=*)",
+            ["fSMORoleOwner"],
+        )
+        if infra_entries:
+            infra_holder = _first(infra_entries[0].get("fSMORoleOwner"))
+    except Exception as exc:
+        log.debug("DELEG-008: Infrastructure Master query failed: %s", exc)
+
+    # For advisory purposes, just list the holders
+    holders = [h for h in [pdc_holder, rid_holder, infra_holder] if h]
+
+    if not holders:
+        # No FSMO holders found or all queries failed
+        return _ok(check_id, name, domain.name, desc, sev, weight,
+                   best_practice_ps="# Verify FSMO role ownership and availability manually",
+                   reference=ref)
+
+    # A holder whose NTDS Settings object was deleted carries a mangled RDN
+    # ("\\0ADEL:<guid>"); one that vanished entirely returns noSuchObject.
+    missing = []
+    for holder_dn in dict.fromkeys(str(h) for h in holders):
+        if "\\0ADEL:" in holder_dn.upper() or "\nDEL:" in holder_dn:
+            missing.append(holder_dn)
+            continue
+        try:
+            if not paged_search(conn, holder_dn, "(objectClass=nTDSDSA)", ["cn"]):
+                missing.append(holder_dn)
+        except Exception as exc:
+            log.debug("DELEG-008: holder %s not found: %s", holder_dn, exc)
+            missing.append(holder_dn)
+
+    if not missing:
+        return _ok(check_id, name, domain.name, desc, sev, weight,
+                   best_practice_ps="# Verify FSMO role ownership: netdom query fsmo",
+                   reference=ref)
+
+    return _fail(
+        check_id, name, domain.name, desc, sev, weight,
+        f"{len(missing)} FSMO role owner(s) point to a deleted or missing DC",
+        affected_objects=missing,
+        remediation_ps=(
+            "# Seize the orphaned role(s) onto a healthy DC:\n"
+            "Move-ADDirectoryServerOperationMasterRole -OperationMasterRole <role> "
+            "-Identity '<healthy_dc>' -Force -WhatIf"
+        ),
+        best_practice_ps="# Verify FSMO role ownership: netdom query fsmo",
+        reference=ref,
+    )
+
+
 _CHECKS = [
     _check_deleg001,
     _check_deleg002,
@@ -308,6 +404,7 @@ _CHECKS = [
     _check_deleg005,
     _check_deleg006,
     _check_deleg007,
+    _check_deleg008,
 ]
 
 

@@ -7,7 +7,7 @@ packages = ["strata"]
 
 [project]
 name = "strata-active-directory-auditing"
-version = "0.1.0"
+version = "0.1.1"
 description = "Read-only Active Directory auditor with prioritized Remediation Roadmap, Tokyo Night HTML report, and Catppuccin TUI."
 readme = "README.md"
 license = { text = "MIT" }

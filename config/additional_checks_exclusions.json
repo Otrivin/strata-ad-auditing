@@ -1,0 +1,28 @@
+{
+  "pwd_policy": {
+    "pwd_009_thresholds": {
+      "min_password_length": 8,
+      "min_password_history": 3,
+      "max_password_age_days": 42,
+      "require_complexity": true,
+      "lockout_threshold_min": 1
+    },
+    "pwd_010_kerberos": {
+      "max_tgt_lifetime_hours": 10,
+      "max_renewable_age_days": 7,
+      "max_service_ticket_lifetime_hours": 10
+    }
+  },
+  "infrastructure": {
+    "infra_017_sites_without_dc": {
+      "allow_empty_sites": false,
+      "critical_site_names": [
+        "Default-First-Site-Name"
+      ]
+    },
+    "infra_018_subnets_not_assigned": {
+      "allow_unassigned_subnets": false,
+      "excluded_subnet_patterns": []
+    }
+  }
+}

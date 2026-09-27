@@ -98,12 +98,21 @@ class CheckResult:
         return self.complexity or _DEFAULT_CATEGORY_COMPLEXITY.get(self.category, Complexity.MODERATE)
 
     def priority_score(self) -> float:
-        """Higher = fix sooner. severity × weight / complexity. Quick wins float to top."""
+        """Higher = fix sooner. severity × weight × affected_count / complexity.
+
+        Formula: (Severity Multiplier × Weight × Affected Object Count) ÷ Complexity Score
+
+        This scales priority by the magnitude of the issue. An issue affecting 100 objects
+        is prioritized higher than the same check affecting 1 object.
+        """
         sev_mult = _SEVERITY_MULTIPLIER.get(self.severity, 0)
         comp_score = _COMPLEXITY_SCORE.get(self.effective_complexity(), 3)
         if comp_score == 0:
             comp_score = 1
-        return (sev_mult * self.weight) / comp_score
+
+        affected_count = len(self.affected_objects) if self.affected_objects else 1
+
+        return (sev_mult * self.weight * affected_count) / comp_score
 
 
 @dataclass
@@ -155,11 +164,20 @@ class Snapshot:
         passed = sum(1 for r in cat_results if r.passed)
         return passed, len(cat_results)
 
+    def severity_distribution(self) -> dict[Severity, int]:
+        """Count failing findings by severity level (excluding INFO and passed checks)."""
+        dist = {Severity.CRITICAL: 0, Severity.HIGH: 0, Severity.MEDIUM: 0, Severity.LOW: 0}
+        for r in self.results:
+            if not r.passed and r.severity in dist:
+                dist[r.severity] += 1
+        return dist
+
     def remediation_roadmap(self) -> list[CheckResult]:
-        """Failing checks ordered by priority_score desc. Quick wins first."""
+        """Failing checks ordered by Severity (CRITICAL→HIGH→MEDIUM→LOW), then priority_score desc."""
+        severity_order = {Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 2, Severity.LOW: 3}
         return sorted(
             (r for r in self.results if not r.passed and r.severity != Severity.INFO),
-            key=lambda r: (-r.priority_score(), r.check_id),
+            key=lambda r: (severity_order.get(r.severity, 999), -r.priority_score()),
         )
 
     def quick_wins(self, limit: int = 5) -> list[CheckResult]:
